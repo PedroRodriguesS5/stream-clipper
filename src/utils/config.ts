@@ -89,6 +89,12 @@ export interface AppConfig {
   deleteClipsAfterPost: boolean;
   /** Also delete never-posted clips (expired/blocked) older than this many hours. 0 = keep them */
   deleteUnpostedClipsAfterHours: number;
+  /** Channels the user asked for in the startup wizard: watched whenever live, any category */
+  focusChannels: string[];
+  /** true = watch only focusChannels (no category discovery) */
+  onlyFocusChannels: boolean;
+  /** What kind of moments the user asked for (wizard); steers the moment picker */
+  contentFocus: { request: string; types: string[] } | null;
   bufferDir: string;
   outputDir: string;
 }
@@ -181,6 +187,9 @@ export const config: AppConfig = {
   whisperVadModelPath: path.resolve(process.cwd(), process.env.WHISPER_VAD_MODEL || 'models/ggml-silero-v5.1.2.bin'),
   deleteClipsAfterPost: process.env.DELETE_CLIPS_AFTER_POST !== 'false',
   deleteUnpostedClipsAfterHours: Math.max(0, Number(process.env.DELETE_UNPOSTED_CLIPS_AFTER_HOURS || 0)),
+  focusChannels: [],
+  onlyFocusChannels: false,
+  contentFocus: null,
   // BUFFER_DIR / OUTPUT_DIR let tests use temp folders (the post queue's cleanup deletes files there)
   bufferDir: path.resolve(process.cwd(), process.env.BUFFER_DIR || 'buffer'),
   outputDir: path.resolve(process.cwd(), process.env.OUTPUT_DIR || 'output'),

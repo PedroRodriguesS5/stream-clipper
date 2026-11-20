@@ -79,6 +79,27 @@ npm run youtube:login                  # log in once; the session refreshes itse
 DRY_RUN=true npm start
 ```
 
+### Choosing what to clip
+
+`npm start` in a terminal opens a short assistant (in Portuguese) before the clipper starts:
+
+```
+  🎬 Stream Clipper  —  o que vamos clipar hoje?
+
+   1) Grand Theft Auto VI  você escolheu 5x · 6.433 views nos seus vídeos · 59.179 espectadores em 29 lives agora
+   2) Just Chatting  5.839 espectadores em 27 lives agora
+   …
+  Enter = repetir a última: Minecraft + canais cellbit (fails engraçados)
+  > fails engraçados de minecraft e as lives do cellbit
+```
+
+- **Suggestions** combine what's big in your language on Twitch right now, what you chose before, and which games got the most views on your channels.
+- **Answer in your own words** (or a number, a `twitch.tv/` link, "o de sempre"). An AI model (9Router, falling back to the Claude CLI) turns it into a plan: Twitch categories, channels, content focus (fails, chaos, discoveries, reactions…), language and minimum viewers. Every name is checked against Twitch; without AI, keywords are used.
+- **Confirm or adjust** ("só canais pequenos", "inclua valorant") and it starts. The content focus also steers which moments the AI picks.
+- **Memory**: choices are saved in `data/preferences.json` (local, never committed) and shape future suggestions. The plan is saved in `data/session.json`, so unattended runs (`nohup …`, `--no-setup`, `SETUP=off`) reuse it without asking.
+
+`npm run setup` changes the plan without starting the clipper. Only live Twitch streams can be clipped; recorded videos (VODs, YouTube links) aren't supported yet.
+
 When the dry run looks good, set `DRY_RUN=false`. To run it unattended on a Mac:
 
 ```bash
@@ -89,7 +110,8 @@ nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &
 
 | Command | What it does |
 |---|---|
-| `npm start` | Build and run the clipper (discover → clip → queue → post) |
+| `npm start` | Ask what to clip (in a terminal), then run the clipper (discover → clip → queue → post) |
+| `npm run setup` | Only choose what to clip (saved for the next start) |
 | `npm test` | Offline tests: SEO rules, platform formatters, subtitle logic, post queue, daily plan |
 | `npm run typecheck` | TypeScript check |
 | `npm run metrics` | Collect views/likes from YouTube Studio and TikTok Studio |
