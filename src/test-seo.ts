@@ -142,5 +142,44 @@ check('subtitles: profanity masked with one asterisk', () => {
   assert.equal(maskProfanity('computador cuidado picada'), 'computador cuidado picada');
 });
 
+// --- Clip retention (disk cleanup) ---
+{
+  const { clipsToDelete } = await import('./utils/clip-retention.js');
+  const now = Date.parse('2026-11-20T12:00:00Z');
+  const f = (n: string, ageH: number) => ({ path: `/out/${n}.mp4`, mtimeMs: now - ageH * 3600_000 });
+  const files = [f('a', 1), f('b', 1), f('c', 1), f('d', 30), f('e', 30), f('g', 1)];
+  const queue = [
+    { clipPath: '/out/a.mp4', status: 'posted' }, { clipPath: '/out/a.mp4', status: 'posted' }, // done everywhere
+    { clipPath: '/out/b.mp4', status: 'posted' }, { clipPath: '/out/b.mp4', status: 'pending' }, // TikTok still waiting
+    { clipPath: '/out/c.mp4', status: 'posted' }, { clipPath: '/out/c.mp4', status: 'stale' }, // posted once, other expired
+    { clipPath: '/out/d.mp4', status: 'stale' }, // never posted, 30 h old
+    { clipPath: '/out/g.mp4', status: 'posting' }, // uploading right now
+  ];
+  const del = (rules: { deleteAfterPost: boolean; unpostedMaxAgeHours: number }) =>
+    clipsToDelete(files, queue, rules, now).map((x) => `${x.path.slice(5, 6)}:${x.reason}`).sort().join(' ');
+  check('cleanup: default deletes only finished posted clips (a, c)', () =>
+    assert.equal(del({ deleteAfterPost: true, unpostedMaxAgeHours: 0 }), 'a:posted c:posted'));
+  check('cleanup: unposted option also removes old never-posted clips (d, e), never pending/posting ones', () =>
+    assert.equal(del({ deleteAfterPost: true, unpostedMaxAgeHours: 24 }), 'a:posted c:posted d:unposted e:unposted'));
+  check('cleanup: DELETE_CLIPS_AFTER_POST=false keeps everything', () =>
+    assert.equal(del({ deleteAfterPost: false, unpostedMaxAgeHours: 0 }), ''));
+}
+
+{
+  const { bufferFilesToDelete } = await import('./utils/clip-retention.js');
+  const now = Date.parse('2026-11-20T12:00:00Z');
+  const ago = (min: number) => now - min * 60_000;
+  const entries = [
+    { rel: 'live/segment_000.mp4', mtimeMs: ago(1) }, { rel: 'live/segment_001.mp4', mtimeMs: ago(6) }, { rel: 'live/concat_list.txt', mtimeMs: ago(6) },
+    { rel: 'gone/segment_000.mp4', mtimeMs: ago(90) }, { rel: 'gone/concat_list.txt', mtimeMs: ago(95) },
+    { rel: 'gone/snapshot_1.mp4', mtimeMs: ago(90) }, // a queued job may still need it
+    { rel: 'old/snapshot_2_moment_0_5s.jpg', mtimeMs: ago(60 * 30) }, { rel: 'test_stream_buffer.mp4', mtimeMs: ago(60 * 30) },
+  ];
+  const del = bufferFilesToDelete(entries, now).sort().join(' ');
+  check('buffer: active channel untouched, idle channel segments deleted', () =>
+    assert.equal(del, 'gone/concat_list.txt gone/segment_000.mp4 old/snapshot_2_moment_0_5s.jpg test_stream_buffer.mp4'));
+  check('buffer: recent snapshot of a stopped channel kept for its queued job', () => assert.ok(!del.includes('snapshot_1.mp4')));
+}
+
 console.log(failures ? `\n${failures} check(s) failed` : '\nall SEO checks passed');
 process.exit(failures ? 1 : 0);

@@ -142,6 +142,9 @@ export const extractClipWithClaudeAgent = async (context: {
     context.alreadyClipped?.length
       ? `ALREADY CLIPPED - do NOT pick these parts again (they were posted already): ${context.alreadyClipped.map((r) => `seconds ${r.from}-${r.to}`).join(', ')}. Choose a DIFFERENT moment; if nothing else is good, set has_reaction=false.`
       : '',
+    config.contentFocus
+      ? `WHAT THE USER ASKED FOR: "${config.contentFocus.request}".${config.contentFocus.types.length ? ` Preferred moment types: ${config.contentFocus.types.join(', ')}. Moments of these types that meet the quality bar get +1 virality_score; other types need to be clearly exceptional to score 8+.` : ''} Never invent a moment to satisfy the request: if nothing matching happened, judge the recording normally.`
+      : '',
     context.pastPerformance ? `RESULTS OF OUR PREVIOUS CLIPS (learn from them; views per hour after posting):\n${context.pastPerformance}` : '',
     sig
       ? [

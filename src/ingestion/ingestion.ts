@@ -1,4 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
+import { markBufferActive, markBufferInactive } from '../utils/active-buffers.js';
 import { EventEmitter } from 'events';
 import fs from 'fs/promises';
 import path from 'path';
@@ -136,6 +137,7 @@ export class RollingStreamBuffer extends EventEmitter {
   public async start(quality = this.quality): Promise<void> {
     this.quality = quality;
     this.startedAt = Date.now();
+    markBufferActive(this.bufferDir); // protects this folder from the disk cleanup while watched
     await fs.mkdir(this.bufferDir, { recursive: true });
 
     // Clean old segments before starting fresh buffer
@@ -320,6 +322,7 @@ export class RollingStreamBuffer extends EventEmitter {
   }
 
   public stop(): void {
+    markBufferInactive(this.bufferDir);
     this.stopping = true;
     this.clearWatchdog();
     this.streamlinkProc?.kill('SIGTERM');

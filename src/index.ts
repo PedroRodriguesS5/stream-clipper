@@ -14,6 +14,7 @@ import { config } from './utils/config.js';
 import { ensureDirectories } from './utils/cleanup.js';
 import { log } from './utils/logger.js';
 import { acquireProcessLock, releaseProcessLock } from './utils/process-lock.js';
+import { applySavedSession, runWizard, shouldRunWizard } from './setup/wizard.js';
 
 /**
  * Supervisor: watches up to MAX_CHANNELS live channels at once (one ChannelWorker each).
@@ -35,7 +36,10 @@ const isRerun = (title: string) => /^\s*[\[(]?\s*(rerun|reprise|replay)\b/i.test
 
 const livePriorityChannels = async (): Promise<DiscoveredGtaStream[]> => {
   const registry = await loadPermissions();
-  const preferred = allowedLogins(registry);
+  // Channels marked "allowed" + channels the user picked in the wizard (blocked ones excluded)
+  const preferred = [
+    ...new Set([...allowedLogins(registry), ...config.focusChannels.filter((c) => checkClipPermission(registry, c).allowed)]),
+  ];
   if (!preferred.length) return [];
   return (await fetchChannelProfiles(preferred))
     // Priority channels (alanzoka...) are watched whenever they are live: any category, any viewer count
@@ -52,6 +56,9 @@ const findCandidates = async (): Promise<DiscoveredGtaStream[]> => {
     if (!perm.allowed) throw new Error(`${config.twitchChannel} is blocked (${perm.reasons.join('; ')})`);
     return [await resolveTargetChannel(config.twitchChannel)];
   }
+
+  // "Só as lives do cellbit": only the chosen channels, no category discovery
+  if (config.onlyFocusChannels) return livePriorityChannels();
 
   const denied = deniedLogins(registry);
   const others =
@@ -71,6 +78,9 @@ const findCandidates = async (): Promise<DiscoveredGtaStream[]> => {
 
 const startApp = async () => {
   acquireProcessLock();
+  // Ask what to clip (terminal) or reuse the last answer (unattended / --no-setup)
+  const session = shouldRunWizard() ? await runWizard().catch((e) => (log('WARN', 'Setup', `Wizard failed (${(e as Error).message}); using saved/.env settings`), null)) : await applySavedSession();
+  if (session) log('INFO', 'Setup', `Clipping: ${session.onlyChannels ? `channels ${session.channels.join(', ')}` : session.categories.join(' | ')}${session.contentTypes.length ? ` | focus: ${session.contentTypes.join(', ')}` : ''}${session.request ? ` ("${session.request}")` : ''}`);
   log(
     'INFO',
     'Main',
@@ -85,7 +95,7 @@ const startApp = async () => {
   const queue = new JobQueue(config.maxConcurrentJobs);
   const workers = new Map<string, ChannelWorker>();
   const recentlyEnded = new Map<string, number>(); // login -> time it ended (avoid instant re-join)
-  const priorityLogins = new Set(allowedLogins(await loadPermissions()));
+  const priorityLogins = new Set([...allowedLogins(await loadPermissions()), ...config.focusChannels]);
   let shuttingDown = false;
   let supervising = false;
 
