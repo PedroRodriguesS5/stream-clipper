@@ -106,6 +106,21 @@ When the dry run looks good, set `DRY_RUN=false`. To run it unattended on a Mac:
 nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &
 ```
 
+### Everyday use
+
+| You want to… | Do this |
+|---|---|
+| Start clipping | `npm start` in a terminal → answer the assistant → confirm |
+| Leave it running | `nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &` (reuses the saved plan, asks nothing) |
+| Change what it clips | `npm run setup`, then restart |
+| Watch what it does | `tail -f output/supervisor.log` |
+| See views per video | `npm run metrics` → `data/video-metrics.json` |
+| Fix "YouTube redirected to login" | `npm run youtube:login` |
+| Stop it | `pkill -INT -f "node dist/index.js"` (running clips finish first) |
+| Free disk space | automatic (posted clips and old recordings are deleted); `npm run cleanup:clips -- --dry-run` to preview |
+
+More detail, the full pipeline and troubleshooting are in [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md) (section 2, "How to use it").
+
 ## Useful commands
 
 | Command | What it does |
@@ -138,6 +153,10 @@ nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &
 | `DRY_RUN` | `false` | Render and check everything, upload nothing |
 
 The full list with explanations is in [`.env.example`](.env.example). Architecture, troubleshooting and design decisions are in [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md).
+
+## Learn from this project
+
+[`PROJECT_GUIDE.md` → section 6](PROJECT_GUIDE.md#6-study-plan-the-topics-behind-what-we-built) is a study plan with links: TypeScript/Node, FFmpeg, live streaming and Twitch, AI with JSON schemas, OAuth and browser automation, short-form SEO, speech-to-text with Whisper, queues and scheduling, testing, Git/GitHub/CI and open source, local web-app security, and terminal UX. Each level points to the files that use it and has a small exercise.
 
 ## Responsible use
 
