@@ -95,6 +95,7 @@ nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &
 | `npm run metrics` | Collect views/likes from YouTube Studio and TikTok Studio |
 | `npm run youtube:login` | Log in to YouTube Studio once (persistent session) |
 | `npm run test:publish -- output/<clip>.mp4 [--youtube-only\|--tiktok-only\|--instagram-only]` | Post one rendered clip now |
+| `npm run cleanup:clips [-- --dry-run]` | Delete rendered clips that are already posted (also runs automatically) |
 | `npm run block -- <login> "reason"` | Never clip this streamer again |
 | `npm run scan:permissions` | Look for clip permissions in streamers' Twitch panels |
 
@@ -110,6 +111,8 @@ nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &
 | `PERMISSION_MODE` | `denylist` | `allowlist` = only streamers with quoted permission |
 | `GROWTH_MODE` | `true` | Also post clips that can't be monetized yet |
 | `SUBTITLES` | `auto` | Whisper subtitles when the model is installed |
+| `DELETE_CLIPS_AFTER_POST` | `true` | Delete the `.mp4` once every platform is done with it and it was posted |
+| `DELETE_UNPOSTED_CLIPS_AFTER_HOURS` | `0` | Also delete never-posted clips after N hours (0 = keep) |
 | `DRY_RUN` | `false` | Render and check everything, upload nothing |
 
 The full list with explanations is in [`.env.example`](.env.example). Architecture, troubleshooting and design decisions are in [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md).

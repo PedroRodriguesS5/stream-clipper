@@ -142,5 +142,28 @@ check('subtitles: profanity masked with one asterisk', () => {
   assert.equal(maskProfanity('computador cuidado picada'), 'computador cuidado picada');
 });
 
+// --- Clip retention (disk cleanup) ---
+{
+  const { clipsToDelete } = await import('./utils/clip-retention.js');
+  const now = Date.parse('2026-11-20T12:00:00Z');
+  const f = (n: string, ageH: number) => ({ path: `/out/${n}.mp4`, mtimeMs: now - ageH * 3600_000 });
+  const files = [f('a', 1), f('b', 1), f('c', 1), f('d', 30), f('e', 30), f('g', 1)];
+  const queue = [
+    { clipPath: '/out/a.mp4', status: 'posted' }, { clipPath: '/out/a.mp4', status: 'posted' }, // done everywhere
+    { clipPath: '/out/b.mp4', status: 'posted' }, { clipPath: '/out/b.mp4', status: 'pending' }, // TikTok still waiting
+    { clipPath: '/out/c.mp4', status: 'posted' }, { clipPath: '/out/c.mp4', status: 'stale' }, // posted once, other expired
+    { clipPath: '/out/d.mp4', status: 'stale' }, // never posted, 30 h old
+    { clipPath: '/out/g.mp4', status: 'posting' }, // uploading right now
+  ];
+  const del = (rules: { deleteAfterPost: boolean; unpostedMaxAgeHours: number }) =>
+    clipsToDelete(files, queue, rules, now).map((x) => `${x.path.slice(5, 6)}:${x.reason}`).sort().join(' ');
+  check('cleanup: default deletes only finished posted clips (a, c)', () =>
+    assert.equal(del({ deleteAfterPost: true, unpostedMaxAgeHours: 0 }), 'a:posted c:posted'));
+  check('cleanup: unposted option also removes old never-posted clips (d, e), never pending/posting ones', () =>
+    assert.equal(del({ deleteAfterPost: true, unpostedMaxAgeHours: 24 }), 'a:posted c:posted d:unposted e:unposted'));
+  check('cleanup: DELETE_CLIPS_AFTER_POST=false keeps everything', () =>
+    assert.equal(del({ deleteAfterPost: false, unpostedMaxAgeHours: 0 }), ''));
+}
+
 console.log(failures ? `\n${failures} check(s) failed` : '\nall SEO checks passed');
 process.exit(failures ? 1 : 0);
