@@ -134,6 +134,20 @@ const run = async () => {
   checks.push(['buffer: channel no longer watched is removed', !(await exists(path.join(buf, 'gone')))]);
   markBufferInactive(path.join(buf, 'watched'));
 
+  // A removed channel must stop quickly even if Twitch chat never disconnects (offline)
+  const { ChannelWorker } = await import('./workers/channel-worker.js');
+  const { JobQueue } = await import('./workers/job-queue.js');
+  const w = new ChannelWorker({ login: 'offlineguy', viewersCount: 100, title: 't', category: 'c' }, new JobQueue(1), 0) as any;
+  w.buffer = { stop: () => {} };
+  let spikeHandled = false;
+  w.chat.stop = () => new Promise(() => {}); // hangs forever, like tmi.js without internet
+  const t0 = Date.now();
+  await w.stop(300);
+  checks.push(['worker: stop returns despite a hung chat disconnect', Date.now() - t0 < 2000]);
+  w.buffer.snapshotBuffer = async () => { spikeHandled = true; throw new Error('should not snapshot'); };
+  await w.onSpike({ triggeredAt: new Date() });
+  checks.push(['worker: spikes after stop are ignored', !spikeHandled]);
+
   await fs.rm(DIR, { recursive: true, force: true });
   let failed = 0;
   for (const [name, ok] of checks) {
