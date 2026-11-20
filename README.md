@@ -79,17 +79,54 @@ npm run youtube:login                  # log in once; the session refreshes itse
 DRY_RUN=true npm start
 ```
 
+### Choosing what to clip
+
+`npm start` in a terminal opens a short assistant (in Portuguese) before the clipper starts:
+
+```
+  🎬 Stream Clipper  —  o que vamos clipar hoje?
+
+   1) Grand Theft Auto VI  você escolheu 5x · 6.433 views nos seus vídeos · 59.179 espectadores em 29 lives agora
+   2) Just Chatting  5.839 espectadores em 27 lives agora
+   …
+  Enter = repetir a última: Minecraft + canais cellbit (fails engraçados)
+  > fails engraçados de minecraft e as lives do cellbit
+```
+
+- **Suggestions** combine what's big in your language on Twitch right now, what you chose before, and which games got the most views on your channels.
+- **Answer in your own words** (or a number, a `twitch.tv/` link, "o de sempre"). An AI model (9Router, falling back to the Claude CLI) turns it into a plan: Twitch categories, channels, content focus (fails, chaos, discoveries, reactions…), language and minimum viewers. Every name is checked against Twitch; without AI, keywords are used.
+- **Confirm or adjust** ("só canais pequenos", "inclua valorant") and it starts. The content focus also steers which moments the AI picks.
+- **Memory**: choices are saved in `data/preferences.json` (local, never committed) and shape future suggestions. The plan is saved in `data/session.json`, so unattended runs (`nohup …`, `--no-setup`, `SETUP=off`) reuse it without asking.
+
+`npm run setup` changes the plan without starting the clipper. Only live Twitch streams can be clipped; recorded videos (VODs, YouTube links) aren't supported yet.
+
 When the dry run looks good, set `DRY_RUN=false`. To run it unattended on a Mac:
 
 ```bash
 nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &
 ```
 
+### Everyday use
+
+| You want to… | Do this |
+|---|---|
+| Start clipping | `npm start` in a terminal → answer the assistant → confirm |
+| Leave it running | `nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &` (reuses the saved plan, asks nothing) |
+| Change what it clips | `npm run setup`, then restart |
+| Watch what it does | `tail -f output/supervisor.log` |
+| See views per video | `npm run metrics` → `data/video-metrics.json` |
+| Fix "YouTube redirected to login" | `npm run youtube:login` |
+| Stop it | `pkill -INT -f "node dist/index.js"` (running clips finish first) |
+| Free disk space | automatic (posted clips and old recordings are deleted); `npm run cleanup:clips -- --dry-run` to preview |
+
+More detail, the full pipeline and troubleshooting are in [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md) (section 2, "How to use it").
+
 ## Useful commands
 
 | Command | What it does |
 |---|---|
-| `npm start` | Build and run the clipper (discover → clip → queue → post) |
+| `npm start` | Ask what to clip (in a terminal), then run the clipper (discover → clip → queue → post) |
+| `npm run setup` | Only choose what to clip (saved for the next start) |
 | `npm test` | Offline tests: SEO rules, platform formatters, subtitle logic, post queue, daily plan |
 | `npm run typecheck` | TypeScript check |
 | `npm run metrics` | Collect views/likes from YouTube Studio and TikTok Studio |
@@ -116,6 +153,10 @@ nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &
 | `DRY_RUN` | `false` | Render and check everything, upload nothing |
 
 The full list with explanations is in [`.env.example`](.env.example). Architecture, troubleshooting and design decisions are in [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md).
+
+## Learn from this project
+
+[`PROJECT_GUIDE.md` → section 6](PROJECT_GUIDE.md#6-study-plan-the-topics-behind-what-we-built) is a study plan with links: TypeScript/Node, FFmpeg, live streaming and Twitch, AI with JSON schemas, OAuth and browser automation, short-form SEO, speech-to-text with Whisper, queues and scheduling, testing, Git/GitHub/CI and open source, local web-app security, and terminal UX. Each level points to the files that use it and has a small exercise.
 
 ## Responsible use
 
