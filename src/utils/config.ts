@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-dotenv.config();
+dotenv.config({ quiet: true }); // dotenv 17+ logs "injected env" on every load otherwise
 
 export interface AppConfig {
   twitchChannel: string;
