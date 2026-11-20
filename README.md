@@ -15,7 +15,7 @@ Clip channels ("cortes") are a huge part of how streamers get discovered, but th
 
 - **Make clipping accessible**: everything runs on your own machine with free tools (FFmpeg, whisper.cpp, Playwright, the Claude Code CLI). No paid API keys are required.
 - **Respect streamers by default**: there's a permission registry, a deny list, credit in every description, per-streamer posting delays, and a gate that refuses to post clips with third-party media, profanity, or no real transformation.
-- **Be a learning project**: the code is a practical tour of child processes, FFmpeg filter graphs, HLS, IRC, LLM prompting with JSON schemas, vision models, speech-to-text, OAuth and browser automation. [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md) has a study path.
+- **Be a learning project**: the code is a practical tour of child processes, FFmpeg filter graphs, HLS, IRC, LLM prompting with JSON schemas, vision models, speech-to-text, OAuth and browser automation.
 - **Improve in the open**: SEO rules, platform limits and moderation heuristics change constantly. Contributions keep them current for everyone.
 
 ## How it works
@@ -119,7 +119,7 @@ nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &
 | Stop it | `pkill -INT -f "node dist/index.js"` (running clips finish first) |
 | Free disk space | automatic (posted clips and old recordings are deleted); `npm run cleanup:clips -- --dry-run` to preview |
 
-More detail, the full pipeline and troubleshooting are in [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md) (section 2, "How to use it").
+More detail, the full pipeline and troubleshooting are in [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md).
 
 ## Useful commands
 
@@ -154,10 +154,6 @@ More detail, the full pipeline and troubleshooting are in [`PROJECT_GUIDE.md`](P
 
 The full list with explanations is in [`.env.example`](.env.example). Architecture, troubleshooting and design decisions are in [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md).
 
-## Learn from this project
-
-[`PROJECT_GUIDE.md` → section 6](PROJECT_GUIDE.md#6-study-plan-the-topics-behind-what-we-built) is a study plan with links: TypeScript/Node, FFmpeg, live streaming and Twitch, AI with JSON schemas, OAuth and browser automation, short-form SEO, speech-to-text with Whisper, queues and scheduling, testing, Git/GitHub/CI and open source, local web-app security, and terminal UX. Each level points to the files that use it and has a small exercise.
-
 ## Responsible use
 
 This tool posts other people's content. Please:
@@ -168,6 +164,14 @@ This tool posts other people's content. Please:
 - **Never commit secrets.** Cookies, tokens and `.env` stay local; CI runs a secret scan on every PR.
 
 Nothing here guarantees monetization or reach. Platforms decide that.
+
+## Documentation
+
+| File | What's in it |
+|---|---|
+| [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md) | How it works in detail, the pipeline, update history, limitations |
+| [`STUDY_PLAN.md`](STUDY_PLAN.md) | Topics, links and exercises to understand how it works |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to propose changes |
 
 ## Contributing
 
