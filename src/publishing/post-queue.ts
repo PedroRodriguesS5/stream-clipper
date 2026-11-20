@@ -260,6 +260,22 @@ export const postingPlan = (platform: Platform, q: QueueItem[], lastPostAt: numb
   return { ...base, open: true, why: `slot open (${postedToday}/${max} today, bar ${minScore}${behind ? ', behind pace' : ''})` };
 };
 
+/**
+ * Has a pending clip waited too long? The clock only runs while the platform can post:
+ * not outside POST_HOURS, not while paused (daily upload limit), and from the moment today's
+ * window opened. Before, everything made overnight expired before 10:00 (126 clips in one night).
+ */
+export const isStale = (i: Pick<QueueItem, 'createdAt' | 'notBefore'>, nowMs: number, pausedUntilMs = 0): boolean => {
+  if (pausedUntilMs > nowMs) return false;
+  const now = new Date(nowMs);
+  const hour = now.getHours() + now.getMinutes() / 60;
+  const { start, end } = config.postHours;
+  if (hour < start || hour >= end) return false;
+  const windowOpen = new Date(now.getFullYear(), now.getMonth(), now.getDate(), start).getTime();
+  const since = Math.max(new Date(i.createdAt).getTime(), new Date(i.notBefore).getTime(), windowOpen, pausedUntilMs);
+  return nowMs - since > config.maxQueueAgeHours * 3600_000;
+};
+
 /** Last plan message per platform, so the once-a-minute queue loop doesn't spam the log */
 const lastPlanNote: Partial<Record<Platform, string>> = {};
 
@@ -279,7 +295,6 @@ export const processPostQueue = async (): Promise<number> => {
   try {
     const registry = await loadPermissions();
     const state = await readJson<PostState>(STATE_PATH, { lastPostAt: {} });
-    const maxAgeMs = config.maxQueueAgeHours * 3600_000;
 
     for (const platform of PLATFORMS) {
       if (platform === 'instagram' && !config.instagramEnabled) continue;
@@ -294,7 +309,7 @@ export const processPostQueue = async (): Promise<number> => {
           if (i.status !== 'pending' || i.platform !== platform) continue;
           // Stale: waited too long after it became postable (not while the platform is paused,
           // e.g. YouTube's daily limit: those clips post, best first, when it comes back)
-          if (pausedUntil <= now && now - Math.max(new Date(i.createdAt).getTime(), new Date(i.notBefore).getTime()) > maxAgeMs) {
+          if (isStale(i, now, pausedUntil)) {
             i.status = 'stale';
             i.result = `not posted within ${config.maxQueueAgeHours} h`;
             i.updatedAt = new Date().toISOString();

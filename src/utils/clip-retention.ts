@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { config } from './config.js';
 import { log } from './logger.js';
+import { isBufferActive } from './active-buffers.js';
 
 /**
  * Deletes rendered clips (output/clip_*_9x16.mp4) once they are no longer needed, so the disk
@@ -145,6 +146,7 @@ export const sweepBuffer = async (
     if (!st) continue;
     if (st.isFile()) entries.push({ rel: name, mtimeMs: st.mtimeMs, size: st.size });
     else if (st.isDirectory()) {
+      if (isBufferActive(full)) continue; // channel being watched: never touch its recordings
       for (const f of await fs.readdir(full).catch(() => [] as string[])) {
         const s = await fs.stat(path.join(full, f)).catch(() => null);
         if (s?.isFile()) entries.push({ rel: `${name}/${f}`, mtimeMs: s.mtimeMs, size: s.size });
@@ -167,6 +169,7 @@ export const sweepBuffer = async (
   }
   // Remove channel folders left empty
   for (const name of await fs.readdir(dir).catch(() => [] as string[])) {
+    if (isBufferActive(path.join(dir, name))) continue;
     await fs.rmdir(path.join(dir, name)).catch(() => {}); // only succeeds when empty
   }
   if (deleted) log('INFO', 'Cleanup', `Buffer: deleted ${deleted} stale file(s), freed ${(freed / 1048576).toFixed(0)} MB`);
