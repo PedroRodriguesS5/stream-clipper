@@ -6,6 +6,7 @@ import { loadPermissions, checkClipPermission, Platform, PLATFORMS } from '../co
 import { InstagramDailyLimitError, uploadToInstagram, uploadToTikTok, uploadToYouTube } from './publishing.js';
 import { uploadToYouTubeStudio, youtubeCookiesAvailable, YouTubeDailyLimitError } from './youtube-studio.js';
 import { config } from '../utils/config.js';
+import { sweepBuffer, sweepClips } from '../utils/clip-retention.js';
 import { log } from '../utils/logger.js';
 
 /**
@@ -263,6 +264,9 @@ export const postingPlan = (platform: Platform, q: QueueItem[], lastPostAt: numb
 const lastPlanNote: Partial<Record<Platform, string>> = {};
 
 let processing = false;
+let lastSweep = 0;
+/** Disk cleanup runs at most this often (it only lists output/ and deletes finished clips) */
+const SWEEP_EVERY_MS = 10 * 60_000;
 
 /**
  * Posts at most one due clip per platform, if that platform's spacing allows it.
@@ -369,6 +373,15 @@ export const processPostQueue = async (): Promise<number> => {
         const i = q.find((x) => x.id === item.id && x.status === 'posting');
         if (i) Object.assign(i, { status, result, updatedAt: new Date().toISOString() });
       });
+    }
+    if (Date.now() - lastSweep > SWEEP_EVERY_MS) {
+      lastSweep = Date.now();
+      // Delete clips every platform is done with (posted somewhere); pending ones are never touched
+      await sweepClips(await withQueue((q) => q.map((i) => ({ clipPath: i.clipPath, status: i.status })))).catch((e) =>
+        log('WARN', 'Cleanup', `Clip cleanup failed: ${(e as Error).message}`)
+      );
+      // buffer/: rolling segments of channels no longer watched, old snapshots/frames
+      await sweepBuffer().catch((e) => log('WARN', 'Cleanup', `Buffer cleanup failed: ${(e as Error).message}`));
     }
   } finally {
     processing = false;

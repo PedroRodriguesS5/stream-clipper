@@ -13,6 +13,7 @@
     "scan:permissions": "tsc && node dist/compliance/scan-permissions.js",
     "block": "tsc && node dist/compliance/block-channel.js",
     "post-queue": "tsc && node dist/run-post-queue.js",
+    "cleanup:clips": "tsc && node dist/cleanup-clips.js",
     "youtube:login": "tsc && node dist/youtube-login.js",
     "test:gate": "tsc && node dist/test-gate.js",
     "test:queue": "tsc && node dist/test-queue.js",
