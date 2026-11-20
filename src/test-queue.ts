@@ -18,6 +18,9 @@ process.env.TIKTOK_COOKIES_PATH = path.join(DIR, 'no-tiktok-cookies.json');
 process.env.TIKTOK_SESSION_COOKIE = '';
 process.env.INSTAGRAM_ENABLED = 'false';
 process.env.YOUTUBE_UPLOAD_METHOD = 'browser';
+// The queue also runs the disk cleanup: keep it away from the real buffer/ and output/
+process.env.BUFFER_DIR = path.join(DIR, 'buffer');
+process.env.OUTPUT_DIR = path.join(DIR, 'output');
 const QUEUE = path.join(DIR, 'post-queue.json');
 const STATE = path.join(DIR, 'post-state.json');
 

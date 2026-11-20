@@ -93,3 +93,82 @@ export const sweepClips = async (
   }
   return { deleted, freedMb: Math.round(freed / 1048576), planned };
 };
+
+/**
+ * buffer/ cleanup. Each watched channel keeps a rolling set of ~10 segments (~25 MB each) in
+ * buffer/<login>/; when the clipper stops watching a channel those segments used to stay forever
+ * (52 folders, 4 GB). The snapshot used for a clip is already deleted after rendering.
+ *  - segment_*.mp4 + concat_list.txt: deleted once the channel's newest segment is older than
+ *    `idleMinutes` (an active channel rewrites a segment every ~30 s, so it's never touched).
+ *  - snapshot_* videos/frames and loose files (crashes, tests): deleted after `leftoverHours`
+ *    (a queued clip job uses its snapshot within minutes).
+ */
+export interface BufferEntry {
+  /** path relative to buffer/, e.g. "alanzoka/segment_003.mp4" or "test.mp4" */
+  rel: string;
+  mtimeMs: number;
+}
+
+export const bufferFilesToDelete = (
+  entries: BufferEntry[],
+  nowMs = Date.now(),
+  idleMinutes = 30,
+  leftoverHours = 3
+): string[] => {
+  const newestSegment = new Map<string, number>();
+  for (const e of entries) {
+    const [dir, file] = e.rel.split('/');
+    if (file && /^segment_\d+\.mp4$/.test(file)) newestSegment.set(dir, Math.max(newestSegment.get(dir) || 0, e.mtimeMs));
+  }
+  const out: string[] = [];
+  for (const e of entries) {
+    const [dir, file] = e.rel.split('/');
+    const ageMs = nowMs - e.mtimeMs;
+    const isRolling = file && (/^segment_\d+\.mp4$/.test(file) || file === 'concat_list.txt');
+    if (isRolling) {
+      if (nowMs - (newestSegment.get(dir) || 0) > idleMinutes * 60_000) out.push(e.rel);
+    } else if (ageMs > leftoverHours * 3600_000) {
+      out.push(e.rel);
+    }
+  }
+  return out;
+};
+
+export const sweepBuffer = async (
+  options: { dryRun?: boolean; dir?: string } = {}
+): Promise<{ deleted: number; freedMb: number; planned: number; plannedMb: number }> => {
+  const dir = options.dir || config.bufferDir;
+  const entries: (BufferEntry & { size: number })[] = [];
+  for (const name of await fs.readdir(dir).catch(() => [] as string[])) {
+    const full = path.join(dir, name);
+    const st = await fs.stat(full).catch(() => null);
+    if (!st) continue;
+    if (st.isFile()) entries.push({ rel: name, mtimeMs: st.mtimeMs, size: st.size });
+    else if (st.isDirectory()) {
+      for (const f of await fs.readdir(full).catch(() => [] as string[])) {
+        const s = await fs.stat(path.join(full, f)).catch(() => null);
+        if (s?.isFile()) entries.push({ rel: `${name}/${f}`, mtimeMs: s.mtimeMs, size: s.size });
+      }
+    }
+  }
+  const planned = bufferFilesToDelete(entries);
+  const plannedMb = Math.round(planned.reduce((n, rel) => n + (entries.find((e) => e.rel === rel)?.size || 0), 0) / 1048576);
+  if (options.dryRun) return { deleted: 0, freedMb: 0, planned: planned.length, plannedMb };
+  let deleted = 0;
+  let freed = 0;
+  for (const rel of planned) {
+    try {
+      await fs.unlink(path.join(dir, rel));
+      deleted++;
+      freed += entries.find((e) => e.rel === rel)?.size || 0;
+    } catch {
+      // file vanished meanwhile (e.g. ring buffer rotated it): fine
+    }
+  }
+  // Remove channel folders left empty
+  for (const name of await fs.readdir(dir).catch(() => [] as string[])) {
+    await fs.rmdir(path.join(dir, name)).catch(() => {}); // only succeeds when empty
+  }
+  if (deleted) log('INFO', 'Cleanup', `Buffer: deleted ${deleted} stale file(s), freed ${(freed / 1048576).toFixed(0)} MB`);
+  return { deleted, freedMb: Math.round(freed / 1048576), planned: planned.length, plannedMb };
+};

@@ -181,7 +181,8 @@ export const config: AppConfig = {
   whisperVadModelPath: path.resolve(process.cwd(), process.env.WHISPER_VAD_MODEL || 'models/ggml-silero-v5.1.2.bin'),
   deleteClipsAfterPost: process.env.DELETE_CLIPS_AFTER_POST !== 'false',
   deleteUnpostedClipsAfterHours: Math.max(0, Number(process.env.DELETE_UNPOSTED_CLIPS_AFTER_HOURS || 0)),
-  bufferDir: path.resolve(process.cwd(), 'buffer'),
-  outputDir: path.resolve(process.cwd(), 'output'),
+  // BUFFER_DIR / OUTPUT_DIR let tests use temp folders (the post queue's cleanup deletes files there)
+  bufferDir: path.resolve(process.cwd(), process.env.BUFFER_DIR || 'buffer'),
+  outputDir: path.resolve(process.cwd(), process.env.OUTPUT_DIR || 'output'),
 };
 

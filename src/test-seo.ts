@@ -165,5 +165,21 @@ check('subtitles: profanity masked with one asterisk', () => {
     assert.equal(del({ deleteAfterPost: false, unpostedMaxAgeHours: 0 }), ''));
 }
 
+{
+  const { bufferFilesToDelete } = await import('./utils/clip-retention.js');
+  const now = Date.parse('2026-11-20T12:00:00Z');
+  const ago = (min: number) => now - min * 60_000;
+  const entries = [
+    { rel: 'live/segment_000.mp4', mtimeMs: ago(1) }, { rel: 'live/segment_001.mp4', mtimeMs: ago(6) }, { rel: 'live/concat_list.txt', mtimeMs: ago(6) },
+    { rel: 'gone/segment_000.mp4', mtimeMs: ago(90) }, { rel: 'gone/concat_list.txt', mtimeMs: ago(95) },
+    { rel: 'gone/snapshot_1.mp4', mtimeMs: ago(90) }, // a queued job may still need it
+    { rel: 'old/snapshot_2_moment_0_5s.jpg', mtimeMs: ago(60 * 30) }, { rel: 'test_stream_buffer.mp4', mtimeMs: ago(60 * 30) },
+  ];
+  const del = bufferFilesToDelete(entries, now).sort().join(' ');
+  check('buffer: active channel untouched, idle channel segments deleted', () =>
+    assert.equal(del, 'gone/concat_list.txt gone/segment_000.mp4 old/snapshot_2_moment_0_5s.jpg test_stream_buffer.mp4'));
+  check('buffer: recent snapshot of a stopped channel kept for its queued job', () => assert.ok(!del.includes('snapshot_1.mp4')));
+}
+
 console.log(failures ? `\n${failures} check(s) failed` : '\nall SEO checks passed');
 process.exit(failures ? 1 : 0);

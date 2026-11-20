@@ -6,7 +6,7 @@ import { loadPermissions, checkClipPermission, Platform, PLATFORMS } from '../co
 import { InstagramDailyLimitError, uploadToInstagram, uploadToTikTok, uploadToYouTube } from './publishing.js';
 import { uploadToYouTubeStudio, youtubeCookiesAvailable, YouTubeDailyLimitError } from './youtube-studio.js';
 import { config } from '../utils/config.js';
-import { sweepClips } from '../utils/clip-retention.js';
+import { sweepBuffer, sweepClips } from '../utils/clip-retention.js';
 import { log } from '../utils/logger.js';
 
 /**
@@ -380,6 +380,8 @@ export const processPostQueue = async (): Promise<number> => {
       await sweepClips(await withQueue((q) => q.map((i) => ({ clipPath: i.clipPath, status: i.status })))).catch((e) =>
         log('WARN', 'Cleanup', `Clip cleanup failed: ${(e as Error).message}`)
       );
+      // buffer/: rolling segments of channels no longer watched, old snapshots/frames
+      await sweepBuffer().catch((e) => log('WARN', 'Cleanup', `Buffer cleanup failed: ${(e as Error).message}`));
     }
   } finally {
     processing = false;
