@@ -6,6 +6,7 @@ import { loadPermissions, checkClipPermission, Platform, PLATFORMS } from '../co
 import { InstagramDailyLimitError, uploadToInstagram, uploadToTikTok, uploadToYouTube } from './publishing.js';
 import { uploadToYouTubeStudio, youtubeCookiesAvailable, YouTubeDailyLimitError } from './youtube-studio.js';
 import { config } from '../utils/config.js';
+import { sweepBuffer, sweepClips } from '../utils/clip-retention.js';
 import { log } from '../utils/logger.js';
 
 /**
@@ -259,10 +260,29 @@ export const postingPlan = (platform: Platform, q: QueueItem[], lastPostAt: numb
   return { ...base, open: true, why: `slot open (${postedToday}/${max} today, bar ${minScore}${behind ? ', behind pace' : ''})` };
 };
 
+/**
+ * Has a pending clip waited too long? The clock only runs while the platform can post:
+ * not outside POST_HOURS, not while paused (daily upload limit), and from the moment today's
+ * window opened. Before, everything made overnight expired before 10:00 (126 clips in one night).
+ */
+export const isStale = (i: Pick<QueueItem, 'createdAt' | 'notBefore'>, nowMs: number, pausedUntilMs = 0): boolean => {
+  if (pausedUntilMs > nowMs) return false;
+  const now = new Date(nowMs);
+  const hour = now.getHours() + now.getMinutes() / 60;
+  const { start, end } = config.postHours;
+  if (hour < start || hour >= end) return false;
+  const windowOpen = new Date(now.getFullYear(), now.getMonth(), now.getDate(), start).getTime();
+  const since = Math.max(new Date(i.createdAt).getTime(), new Date(i.notBefore).getTime(), windowOpen, pausedUntilMs);
+  return nowMs - since > config.maxQueueAgeHours * 3600_000;
+};
+
 /** Last plan message per platform, so the once-a-minute queue loop doesn't spam the log */
 const lastPlanNote: Partial<Record<Platform, string>> = {};
 
 let processing = false;
+let lastSweep = 0;
+/** Disk cleanup runs at most this often (it only lists output/ and deletes finished clips) */
+const SWEEP_EVERY_MS = 10 * 60_000;
 
 /**
  * Posts at most one due clip per platform, if that platform's spacing allows it.
@@ -275,7 +295,6 @@ export const processPostQueue = async (): Promise<number> => {
   try {
     const registry = await loadPermissions();
     const state = await readJson<PostState>(STATE_PATH, { lastPostAt: {} });
-    const maxAgeMs = config.maxQueueAgeHours * 3600_000;
 
     for (const platform of PLATFORMS) {
       if (platform === 'instagram' && !config.instagramEnabled) continue;
@@ -290,7 +309,7 @@ export const processPostQueue = async (): Promise<number> => {
           if (i.status !== 'pending' || i.platform !== platform) continue;
           // Stale: waited too long after it became postable (not while the platform is paused,
           // e.g. YouTube's daily limit: those clips post, best first, when it comes back)
-          if (pausedUntil <= now && now - Math.max(new Date(i.createdAt).getTime(), new Date(i.notBefore).getTime()) > maxAgeMs) {
+          if (isStale(i, now, pausedUntil)) {
             i.status = 'stale';
             i.result = `not posted within ${config.maxQueueAgeHours} h`;
             i.updatedAt = new Date().toISOString();
@@ -369,6 +388,15 @@ export const processPostQueue = async (): Promise<number> => {
         const i = q.find((x) => x.id === item.id && x.status === 'posting');
         if (i) Object.assign(i, { status, result, updatedAt: new Date().toISOString() });
       });
+    }
+    if (Date.now() - lastSweep > SWEEP_EVERY_MS) {
+      lastSweep = Date.now();
+      // Delete clips every platform is done with (posted somewhere); pending ones are never touched
+      await sweepClips(await withQueue((q) => q.map((i) => ({ clipPath: i.clipPath, status: i.status })))).catch((e) =>
+        log('WARN', 'Cleanup', `Clip cleanup failed: ${(e as Error).message}`)
+      );
+      // buffer/: rolling segments of channels no longer watched, old snapshots/frames
+      await sweepBuffer().catch((e) => log('WARN', 'Cleanup', `Buffer cleanup failed: ${(e as Error).message}`));
     }
   } finally {
     processing = false;

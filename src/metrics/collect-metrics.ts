@@ -53,7 +53,7 @@ const num = (s?: string) => {
 };
 
 const youtubePublic = async (id: string) => {
-  const html = await (await fetch(`https://www.youtube.com/watch?v=${id}`, { headers: { 'User-Agent': UA, 'Accept-Language': 'en-US' } })).text();
+  const html = await (await fetch(`https://www.youtube.com/watch?v=${id}`, { headers: { 'User-Agent': UA, 'Accept-Language': 'en-US' }, signal: AbortSignal.timeout(20_000) })).text();
   const views = html.match(/"viewCount":"(\d+)"/)?.[1];
   const likes = html.match(/"likeCount":"?(\d+)/)?.[1];
   const unavailable = /"status":"(ERROR|UNPLAYABLE|LOGIN_REQUIRED)"/.exec(html)?.[1];

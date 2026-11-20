@@ -18,6 +18,9 @@ process.env.TIKTOK_COOKIES_PATH = path.join(DIR, 'no-tiktok-cookies.json');
 process.env.TIKTOK_SESSION_COOKIE = '';
 process.env.INSTAGRAM_ENABLED = 'false';
 process.env.YOUTUBE_UPLOAD_METHOD = 'browser';
+// The queue also runs the disk cleanup: keep it away from the real buffer/ and output/
+process.env.BUFFER_DIR = path.join(DIR, 'buffer');
+process.env.OUTPUT_DIR = path.join(DIR, 'output');
 const QUEUE = path.join(DIR, 'post-queue.json');
 const STATE = path.join(DIR, 'post-state.json');
 
@@ -102,6 +105,34 @@ const run = async () => {
   checks.push(['plan: closed after 10 posts today', !postingPlan('youtube', postedAt(at(20), 10) as any, 0, at(20)).open]);
   checks.push(['plan: behind pace at 20h with 1 post -> bar drops to 7', postingPlan('youtube', postedAt(at(19), 1) as any, 0, at(20)).minScore === 7]);
   checks.push(['plan: on pace at 20h with 4 posts -> bar stays 8', postingPlan('youtube', postedAt(at(19), 4) as any, 0, at(20)).minScore === 8]);
+
+  // Expiry clock only runs while the platform can post
+  const { isStale } = await import('./publishing/post-queue.js');
+  Object.assign(config, { maxQueueAgeHours: 3 });
+  const madeAt = (h: number) => ({ createdAt: iso(at(h)), notBefore: iso(at(h)) });
+  checks.push(['expiry: clip made at 02h is not stale at 08h (posting closed)', !isStale(madeAt(2), at(8))]);
+  checks.push(['expiry: overnight clip still fresh at 12h (clock starts at 10h)', !isStale(madeAt(2), at(12))]);
+  checks.push(['expiry: overnight clip stale at 13h30 (3 h after window opened)', isStale(madeAt(2), at(13, 30))]);
+  checks.push(['expiry: never stale while the platform is paused', !isStale(madeAt(10), at(20), at(21))]);
+  checks.push(['expiry: daytime clip stale 3 h after it was made', isStale(madeAt(14), at(17, 30)) && !isStale(madeAt(14), at(16))]);
+
+  // Disk cleanup never touches a buffer folder that is being recorded
+  const { sweepBuffer } = await import('./utils/clip-retention.js');
+  const { markBufferActive, markBufferInactive } = await import('./utils/active-buffers.js');
+  const buf = path.join(DIR, 'buf');
+  for (const ch of ['watched', 'gone']) {
+    await fs.mkdir(path.join(buf, ch), { recursive: true });
+    const seg = path.join(buf, ch, 'segment_000.mp4');
+    await fs.writeFile(seg, 'x');
+    const old = new Date(now - 2 * 3600_000);
+    await fs.utimes(seg, old, old); // 2 h without new segments (stalled / ended)
+  }
+  markBufferActive(path.join(buf, 'watched'));
+  await sweepBuffer({ dir: buf });
+  const exists = async (p: string) => fs.access(p).then(() => true, () => false);
+  checks.push(['buffer: stalled but watched channel is kept', await exists(path.join(buf, 'watched', 'segment_000.mp4'))]);
+  checks.push(['buffer: channel no longer watched is removed', !(await exists(path.join(buf, 'gone')))]);
+  markBufferInactive(path.join(buf, 'watched'));
 
   await fs.rm(DIR, { recursive: true, force: true });
   let failed = 0;
