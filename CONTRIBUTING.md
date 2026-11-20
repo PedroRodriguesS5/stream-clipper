@@ -14,7 +14,8 @@ Thanks for helping! A few rules keep `main` working for everyone.
    - **Build & test**: TypeScript check plus the offline tests (no accounts, browsers or network needed)
    - **Secret scan**: gitleaks blocks cookies, tokens and keys
    - **Dependency audit**: no critical vulnerabilities in production dependencies
-4. `main` is protected: a PR can only be merged when all three checks pass and every review conversation is resolved.
+4. `main` is protected: a PR can only be merged when all three checks pass, **a maintainer has approved it**, and every review conversation is resolved. New commits dismiss earlier approvals.
+5. PRs and issues may also get an automated review comment starting with `🤖 Orca`. It's advice for the maintainer; the human approval is what counts.
 
 ## Guidelines
 

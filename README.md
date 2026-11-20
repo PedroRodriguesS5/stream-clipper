@@ -175,7 +175,7 @@ Nothing here guarantees monetization or reach. Platforms decide that.
 
 ## Contributing
 
-Issues and pull requests are welcome. Every PR runs CI (**type check, offline tests, secret scan, dependency audit**) and needs to pass before it can be merged into `main`. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Issues and pull requests are welcome. Every PR runs CI (**type check, offline tests, secret scan, dependency audit**) and needs **a maintainer's approval** before it can be merged into `main`. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## License
 

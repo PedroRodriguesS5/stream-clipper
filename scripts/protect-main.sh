@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Makes the CI checks required on main: no direct pushes, every change goes through a PR
-# that passes "Build & test", "Secret scan" and "Dependency audit".
+# Protects main: no direct pushes; every PR needs 1 approving review (from the maintainer)
+# plus green "Build & test", "Secret scan" and "Dependency audit". Admins may merge their
+# own PRs after CI (GitHub never lets an account approve its own PR).
 # Usage (after the first push): scripts/protect-main.sh [owner/repo]
 set -euo pipefail
 REPO="${1:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}"
@@ -12,9 +13,9 @@ gh api -X PUT "repos/${REPO}/branches/main/protection" \
     "strict": true,
     "contexts": ["Build & test", "Secret scan", "Dependency audit"]
   },
-  "enforce_admins": true,
+  "enforce_admins": false,
   "required_pull_request_reviews": {
-    "required_approving_review_count": 0,
+    "required_approving_review_count": 1,
     "dismiss_stale_reviews": true
   },
   "restrictions": null,
@@ -23,4 +24,4 @@ gh api -X PUT "repos/${REPO}/branches/main/protection" \
   "required_conversation_resolution": true
 }
 JSON
-echo "main is protected on ${REPO}: PRs only, CI must pass."
+echo "main is protected on ${REPO}: PRs only, 1 approval + CI required."
