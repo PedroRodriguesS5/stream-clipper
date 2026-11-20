@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.env
+cookies/
+buffer/
+output/
+*.mp4
+*.png
+*.ts.bak
+.DS_Store
+models/
+browser-profile/
+
+# Runtime state (queue, metrics, PID, caches, your streamer permission records): never commit
+data/*
+!data/clip-permissions.example.json
+# Game screenshots used to make channel art (third-party copyrighted images)
+branding/frames/
+# Local secrets / sessions
+.env.*
+!.env.example
+*.srt

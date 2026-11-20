@@ -1,0 +1,25 @@
+{
+  "_readme": "Copy to data/clip-permissions.json. PERMISSION_MODE=denylist clips every channel except status \"denied\"; allowlist only clips status \"allowed\" with quoted evidence.",
+  "channels": [
+    {
+      "login": "examplestreamer",
+      "displayName": "ExampleStreamer",
+      "status": "allowed",
+      "platformsAllowed": ["youtube", "tiktok"],
+      "monetizationAllowed": null,
+      "creditRequired": true,
+      "rules": ["Credit @examplestreamer and link the Twitch channel"],
+      "evidence": [
+        {
+          "source": "twitch_panel",
+          "url": "https://twitch.tv/examplestreamer/about",
+          "quote": "Copy the streamer's exact words that allow clips here.",
+          "checkedAt": "2026-01-01"
+        }
+      ],
+      "postDelayHours": 0,
+      "notes": "",
+      "updatedAt": "2026-01-01"
+    }
+  ]
+}

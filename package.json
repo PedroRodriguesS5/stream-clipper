@@ -1,0 +1,42 @@
+{
+  "name": "stream-clipper",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && node dist/index.js",
+    "test:e2e": "tsc && node dist/test-pipeline.js",
+    "test:live": "tsc && node dist/test-live-gta6.js",
+    "test:publish": "tsc && node dist/test-publish.js",
+    "test:layout": "tsc && node dist/test-layout.js",
+    "test:chat": "tsc && node dist/test-chat.js",
+    "scan:permissions": "tsc && node dist/compliance/scan-permissions.js",
+    "block": "tsc && node dist/compliance/block-channel.js",
+    "post-queue": "tsc && node dist/run-post-queue.js",
+    "youtube:login": "tsc && node dist/youtube-login.js",
+    "test:gate": "tsc && node dist/test-gate.js",
+    "test:queue": "tsc && node dist/test-queue.js",
+    "test:seo": "tsc && node dist/test-seo.js",
+    "metrics": "node dist/metrics/collect-metrics.js",
+    "research:titles": "node dist/research/viral-titles.js",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc && node dist/test-seo.js && node dist/test-queue.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "googleapis": "^144.0.0",
+    "playwright": "^1.49.1",
+    "tmi.js": "^1.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "description": "Open-source live-stream clipper: watches Twitch chat for hype, cuts vertical clips with AI, burns Whisper subtitles and publishes to YouTube Shorts, TikTok and Instagram Reels."
+}
