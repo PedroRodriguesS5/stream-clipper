@@ -114,6 +114,9 @@ const run = async () => {
   checks.push(['expiry: overnight clip still fresh at 12h (clock starts at 10h)', !isStale(madeAt(2), at(12))]);
   checks.push(['expiry: overnight clip stale at 13h30 (3 h after window opened)', isStale(madeAt(2), at(13, 30))]);
   checks.push(['expiry: never stale while the platform is paused', !isStale(madeAt(10), at(20), at(21))]);
+  config.postHours = { start: 0, end: 24 };
+  checks.push(['expiry: open all day -> a 5 h old clip is stale even at 01:00', isStale({ createdAt: iso(at(1) - 5 * 3600_000), notBefore: iso(at(1) - 5 * 3600_000) }, at(1))]);
+  config.postHours = { start: 10, end: 23 };
   checks.push(['expiry: daytime clip stale 3 h after it was made', isStale(madeAt(14), at(17, 30)) && !isStale(madeAt(14), at(16))]);
 
   // Disk cleanup never touches a buffer folder that is being recorded

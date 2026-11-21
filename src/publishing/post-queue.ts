@@ -271,7 +271,8 @@ export const isStale = (i: Pick<QueueItem, 'createdAt' | 'notBefore'>, nowMs: nu
   const hour = now.getHours() + now.getMinutes() / 60;
   const { start, end } = config.postHours;
   if (hour < start || hour >= end) return false;
-  const windowOpen = new Date(now.getFullYear(), now.getMonth(), now.getDate(), start).getTime();
+  // With posting open all day (0-24) nothing was ever closed: don't restart the clock at midnight
+  const windowOpen = start === 0 && end >= 24 ? 0 : new Date(now.getFullYear(), now.getMonth(), now.getDate(), start).getTime();
   const since = Math.max(new Date(i.createdAt).getTime(), new Date(i.notBefore).getTime(), windowOpen, pausedUntilMs);
   return nowMs - since > config.maxQueueAgeHours * 3600_000;
 };
