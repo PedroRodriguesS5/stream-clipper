@@ -97,6 +97,16 @@ check('GTA 6: micro-topic tag first, streamer and #gta6 in the first 3', () => {
   assert.ok(gta6.hashtags.slice(0, 4).includes('#gta6'));
 });
 
+// Easter eggs get the searched tags/phrases, only when the clip is about one
+const egg = normalizeSEO({ title: 'ALANZOKA ACHOU UM EASTER EGG NO GTA 6 😱', description: 'No GTA 6, @alanzoka achou uma referência escondida ao GTA San Andreas.', hashtags: [] }, 'alanzoka', 'Grand Theft Auto VI');
+check('easter egg: #gta6eastereggs first and "gta 6 easter egg" in search tags', () => {
+  assert.equal(egg.hashtags[0], '#gta6eastereggs', egg.hashtags.join(' '));
+  assert.ok(egg.search_tags?.includes('gta 6 easter egg'));
+});
+check('no easter egg tags on an ordinary clip', () => {
+  assert.ok(!gta6.hashtags.some((t) => t.includes('easter')) && !gta6.search_tags?.some((t) => t.includes('easter')));
+});
+
 // Another game: nothing GTA at all
 const valorant = normalizeSEO({ title: 'XAROLA DEU ACE NO VALORANT 😱', description: 'xarola deu ace.', hashtags: ['#gta6'] }, 'xarola', 'VALORANT');
 check('VALORANT: no GTA tags, game tag present', () => {
