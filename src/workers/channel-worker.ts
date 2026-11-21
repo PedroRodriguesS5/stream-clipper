@@ -67,6 +67,7 @@ export class ChannelWorker extends EventEmitter {
   }
 
   private async onSpike(event: ChatSpikeEvent): Promise<void> {
+    if (this.stopped) return; // a removed channel whose chat is still disconnecting
     if (this.snapshotting || this.queue.hasJobFor(this.login)) {
       log('INFO', 'Worker', `${this.login}: spike ignored (a clip of this channel is already in progress)`);
       return;
@@ -77,6 +78,7 @@ export class ChannelWorker extends EventEmitter {
       const waitSec = config.segmentDurationSeconds + 3;
       log('INFO', 'Worker', `${this.login}: hype spike! Waiting ${waitSec}s for the moment to finish recording...`);
       await sleep(waitSec * 1000);
+      if (this.stopped) return; // channel removed while we waited: its recording is gone
 
       const snapshotPath = path.join(config.bufferDir, this.login, `snapshot_${event.triggeredAt.getTime()}.mp4`);
       const snap = await this.buffer.snapshotBuffer(snapshotPath);
@@ -103,9 +105,23 @@ export class ChannelWorker extends EventEmitter {
     }
   }
 
-  public async stop(): Promise<void> {
+  private stopped = false;
+
+  /**
+   * Never blocks for long: without internet, disconnecting from Twitch chat can hang forever,
+   * and the supervisor waits for this (it once froze the whole clipper for 2 h after an outage).
+   */
+  public async stop(timeoutMs = 10_000): Promise<void> {
+    this.stopped = true;
     this.buffer.stop();
-    await this.chat.stop();
+    const timedOut = await Promise.race([
+      this.chat.stop().then(() => false),
+      new Promise<boolean>((r) => setTimeout(() => r(true), timeoutMs)),
+    ]);
+    if (timedOut) {
+      this.chat.removeAllListeners(); // no more spikes from a half-closed connection
+      log('WARN', 'Worker', `${this.login}: chat did not disconnect within ${timeoutMs / 1000}s (offline?); dropped it`);
+    }
     log('INFO', 'Worker', `■ ${this.login} stopped (${this.clipsQueued} clip(s) queued)`);
   }
 }
