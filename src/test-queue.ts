@@ -151,6 +151,35 @@ const run = async () => {
   await w.onSpike({ triggeredAt: new Date() });
   checks.push(['worker: spikes after stop are ignored', !spikeHandled]);
 
+  // Semi-manual TikTok: a slot exports clip + caption to a phone-synced folder instead of uploading
+  const { exportForManualPost, cleanupManualExports, exportName } = await import('./publishing/manual-export.js');
+  const handoff = path.join(DIR, 'handoff');
+  const clipFile = path.join(DIR, 'clip_x_1_9x16.mp4');
+  await fs.writeFile(clipFile, 'video');
+  const seoX = { hook_caption: 'H', title: 'ALANZOKA ACHOU UM EASTER EGG NO GTA 6', description: 'No GTA 6, alanzoka achou um segredo.', hashtags: ['#gta6eastereggs', '#alanzoka'], channel: 'alanzoka', game: 'Grand Theft Auto VI' };
+  const out = await exportForManualPost(clipFile, seoX, { dir: handoff, now: new Date(2026, 10, 22, 14, 30), notify: false });
+  const txt = await fs.readFile(out.replace(/\.mp4$/, '.txt'), 'utf-8');
+  checks.push(['manual tiktok: video copied with a dated name', path.basename(out) === '2026-11-22_1430_alanzoka.mp4' && (await fs.readFile(out, 'utf-8')) === 'video']);
+  checks.push(['manual tiktok: caption file starts with the title and has the hashtags', txt.startsWith(seoX.title) && txt.includes('#gta6eastereggs')]);
+  checks.push(['manual tiktok: export names are safe', exportName('Weird Name!', new Date(2026, 0, 2, 3, 4)) === '2026-01-02_0304_weirdname']);
+  const old = new Date(Date.now() - 5 * 86_400_000);
+  await fs.utimes(out, old, old);
+  const removed = await cleanupManualExports(handoff, 3);
+  checks.push(['manual tiktok: exports older than 3 days are cleaned up', removed === 1]);
+
+  // Queue: a TikTok slot in manual mode marks the item posted with the export path
+  config.tiktokMode = 'manual';
+  config.tiktokManualDir = handoff;
+  config.postsPerDay.tiktok = { min: 0, max: 144 };
+  config.postHours = { start: 0, end: 24 };
+  config.minPostScore = 1;
+  await fs.writeFile(QUEUE, JSON.stringify([{ ...item('tt1', 'alanzoka', 0, 1), platform: 'tiktok', clipPath: clipFile, seo: seoX, score: 9 }]));
+  await fs.writeFile(STATE, JSON.stringify({ lastPostAt: {} }));
+  await processPostQueue();
+  q = JSON.parse(await fs.readFile(QUEUE, 'utf-8'));
+  const tt = q.find((i: any) => i.id === 'tt1');
+  checks.push(['manual tiktok: queue slot exports instead of uploading', tt.status === 'posted' && String(tt.result).startsWith('manual: ' + handoff)]);
+
   await fs.rm(DIR, { recursive: true, force: true });
   let failed = 0;
   for (const [name, ok] of checks) {
