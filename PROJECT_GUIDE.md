@@ -31,6 +31,9 @@ npm run youtube:login                                  # log in to the channel o
 3. **Check results**: `npm run metrics` (views per video in `data/video-metrics.json`). The best/worst clips are fed back to the AI automatically.
 4. **When YouTube says "redirected to login"**: run `npm run youtube:login` again.
 
+### TikTok from the phone (semi-manual)
+If automated TikTok uploads get no reach, set `TIKTOK_MODE=manual`. The queue still picks the best clip for each TikTok slot (3 a day), but instead of uploading it copies `YYYY-MM-DD_HHMM_<streamer>.mp4` and a `.txt` with the ready caption to **iCloud Drive → Stream Clipper → TikTok** and shows a Mac notification. On the iPhone: Files app → that folder → open the video → Share → TikTok → paste the caption. Exports older than 3 days are removed (`TIKTOK_MANUAL_KEEP_DAYS`).
+
 ### How much it posts
 `POSTS_PER_DAY_MIN/MAX` (default 5–10 per platform, override per platform with `…_YOUTUBE`, `…_TIKTOK`), between `POST_HOURS` (10–23 local). Slots are spread over the day and each slot takes the **most viral** waiting clip (score ≥ `MIN_POST_SCORE`, 8). Unverified YouTube channels can only upload ~10 videos a day: verify at youtube.com/verify for more.
 
