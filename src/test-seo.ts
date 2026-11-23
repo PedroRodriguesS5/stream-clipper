@@ -209,5 +209,41 @@ check('subtitles: profanity masked with one asterisk', () => {
   });
 }
 
+{
+  const { chooseCtaVariant, ctaOverlays } = await import('./video/cta.js');
+  const { parseStudioSubscribers, carryForward } = await import('./metrics/collect-metrics.js');
+  const { ctaStats } = await import('./cta-report.js');
+  check('cta: assignment is stable and splits clips evenly', () => {
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < 900; i++) { const v = chooseCtaVariant(`clip_x_${i}_9x16.mp4`, ['none', 'end', 'pulse']); counts[v] = (counts[v] || 0) + 1; }
+    assert.equal(chooseCtaVariant('clip_a_1_9x16.mp4', ['none', 'end', 'pulse']), chooseCtaVariant('clip_a_1_9x16.mp4', ['none', 'end', 'pulse']));
+    for (const v of ['none', 'end', 'pulse']) assert.ok(counts[v] > 240 && counts[v] < 360, JSON.stringify(counts));
+  });
+  check('cta: end shows in the last 3 s; pulse alternates two sizes from 2 s; none adds nothing', () => {
+    const end = ctaOverlays('end', [4], 'v_sub', 20);
+    assert.ok(end.filters[0].includes("gte(t,17.00)") && end.filters[0].includes('shortest=1') && end.out === 'v_cta');
+    const pulse = ctaOverlays('pulse', [4, 5], 'v_sub', 20);
+    assert.equal(pulse.filters.length, 2);
+    assert.ok(pulse.filters[0].includes('[4:v]') && pulse.filters[1].includes('[5:v]'));
+    assert.deepEqual(ctaOverlays('none', [], 'v_sub', 20), { filters: [], out: 'v_sub' });
+  });
+  check('metrics: subscribers parsed from the Studio analytics text', () => {
+    assert.equal(parseStudioSubscribers('Tempo de exibição (horas) | 12,3 | Inscritos | +1 | Visualizações'), 1);
+    assert.equal(parseStudioSubscribers('Watch time | Subscribers | +1.204 | Views'), 1204);
+    assert.equal(parseStudioSubscribers('nothing here'), undefined);
+  });
+  check('metrics: subscribers survive a run that only read views', () => {
+    const b = { platform: 'youtube' as const, channel: 'x', postedAt: '', ageHours: 30, title: 't', caption: 'c', clip: 'a.mp4' };
+    const r = carryForward([{ ...b, views: 500 }] as any, [{ ...b, views: 400, subscribers: 3 }] as any, 'T');
+    assert.equal(r[0].views, 500);
+    assert.equal(r[0].subscribers, 3);
+  });
+  check('cta report: subscribers per 1,000 views per variant, best first', () => {
+    const v = (cta: string, views: number, subscribers?: number) => ({ platform: 'youtube', cta, views, subscribers, clip: '', channel: '', postedAt: '', ageHours: 30, title: '', caption: '' });
+    const s = ctaStats([v('none', 1000, 1), v('none', 1000, 1), v('end', 1000, 4), v('pulse', 2000, 4), v('end', 500)] as any);
+    assert.deepEqual(s.map((x) => [x.variant, x.subsPer1k, x.withSubs]), [['end', 4, 1], ['pulse', 2, 1], ['none', 1, 2]]);
+  });
+}
+
 console.log(failures ? `\n${failures} check(s) failed` : '\nall SEO checks passed');
 process.exit(failures ? 1 : 0);

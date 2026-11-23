@@ -20,6 +20,7 @@
     "test:queue": "tsc && node dist/test-queue.js",
     "test:seo": "tsc && node dist/test-seo.js",
     "metrics": "node dist/metrics/collect-metrics.js",
+    "cta:report": "node dist/cta-report.js",
     "research:titles": "node dist/research/viral-titles.js",
     "typecheck": "tsc --noEmit",
     "test": "tsc && node dist/test-seo.js && node dist/test-queue.js && node dist/test-setup.js",

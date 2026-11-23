@@ -34,6 +34,9 @@ npm run youtube:login                                  # log in to the channel o
 ### TikTok from the phone (semi-manual)
 If automated TikTok uploads get no reach, set `TIKTOK_MODE=manual`. The queue still picks the best clip for each TikTok slot (3 a day), but instead of uploading it copies `YYYY-MM-DD_HHMM_<streamer>.mp4` and a `.txt` with the ready caption to **iCloud Drive → Stream Clipper → TikTok** and shows a Mac notification. On the iPhone: Files app → that folder → open the video → Share → TikTok → paste the caption. Exports older than 3 days are removed (`TIKTOK_MANUAL_KEEP_DAYS`).
 
+### Follow CTA test (more subscribers)
+Each clip gets one of three variants (`CTA_VARIANTS`): **none** (control), **end** (a small "＋ Siga para mais" pill for the last 3 s) or **pulse** (the same pill from second 2, gently pulsing). It sits under the subtitles, clear of the platform buttons. The variant is saved in the clip's `.seo.json`. `npm run metrics` reads each Short's **subscribers gained** from YouTube Studio analytics (once it is 24 h old), and `npm run cta:report` ranks the variants by subscribers per 1,000 views. Wait for at least 10 measured Shorts per variant, then keep the winner (e.g. `CTA_VARIANTS=end`).
+
 ### How much it posts
 `POSTS_PER_DAY_MIN/MAX` (default 5–10 per platform, override per platform with `…_YOUTUBE`, `…_TIKTOK`), between `POST_HOURS` (10–23 local). Slots are spread over the day and each slot takes the **most viral** waiting clip (score ≥ `MIN_POST_SCORE`, 8). Unverified YouTube channels can only upload ~10 videos a day: verify at youtube.com/verify for more.
 
