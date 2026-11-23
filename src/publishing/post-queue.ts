@@ -7,6 +7,7 @@ import { InstagramDailyLimitError, uploadToInstagram, uploadToTikTok, uploadToYo
 import { uploadToYouTubeStudio, youtubeCookiesAvailable, YouTubeDailyLimitError } from './youtube-studio.js';
 import { config } from '../utils/config.js';
 import { sweepBuffer, sweepClips } from '../utils/clip-retention.js';
+import { cleanupManualExports, exportForManualPost } from './manual-export.js';
 import { log } from '../utils/logger.js';
 
 /**
@@ -90,6 +91,7 @@ const upload = async (platform: Platform, clipPath: string, seo: SEOMetadata): P
     return uploadToYouTube(clipPath, seo, config.youtubePrivacy);
   }
   if (platform === 'instagram') return uploadToInstagram(clipPath, seo);
+  if (config.tiktokMode === 'manual') return `manual: ${await exportForManualPost(clipPath, seo)}`;
   const r = await uploadToTikTok(clipPath, seo);
   if (!r.posted) throw new Error('TikTok post not found in Studio after posting');
   return `posted (privacy: ${r.privacy ?? '?'}${r.underReview ? ', under review' : ''})`;
@@ -396,6 +398,7 @@ export const processPostQueue = async (): Promise<number> => {
       await sweepClips(await withQueue((q) => q.map((i) => ({ clipPath: i.clipPath, status: i.status })))).catch((e) =>
         log('WARN', 'Cleanup', `Clip cleanup failed: ${(e as Error).message}`)
       );
+      if (config.tiktokMode === 'manual') await cleanupManualExports().catch(() => 0);
       // buffer/: rolling segments of channels no longer watched, old snapshots/frames
       await sweepBuffer().catch((e) => log('WARN', 'Cleanup', `Buffer cleanup failed: ${(e as Error).message}`));
     }

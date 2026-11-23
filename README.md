@@ -117,6 +117,7 @@ nohup caffeinate -ims node dist/index.js >> output/supervisor.log 2>&1 &
 | See views per video | `npm run metrics` → `data/video-metrics.json` |
 | Fix "YouTube redirected to login" | `npm run youtube:login` |
 | Stop it | `pkill -INT -f "node dist/index.js"` (running clips finish first) |
+| Post TikTok from your phone | `TIKTOK_MODE=manual`: each TikTok slot puts the clip + caption in iCloud Drive → Stream Clipper → TikTok and notifies you; post it from the TikTok app |
 | Free disk space | automatic (posted clips and old recordings are deleted); `npm run cleanup:clips -- --dry-run` to preview |
 
 More detail, the full pipeline and troubleshooting are in [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md).

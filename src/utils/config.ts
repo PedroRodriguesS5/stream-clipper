@@ -95,6 +95,12 @@ export interface AppConfig {
   onlyFocusChannels: boolean;
   /** What kind of moments the user asked for (wizard); steers the moment picker */
   contentFocus: { request: string; types: string[] } | null;
+  /** auto = upload with TikTok Studio (browser); manual = export clip + caption to a phone-synced folder */
+  tiktokMode: 'auto' | 'manual';
+  /** Folder for manual TikTok exports (default iCloud Drive/Stream Clipper/TikTok) */
+  tiktokManualDir: string;
+  /** Manual exports older than this many days are removed */
+  tiktokManualKeepDays: number;
   bufferDir: string;
   outputDir: string;
 }
@@ -187,6 +193,9 @@ export const config: AppConfig = {
   whisperVadModelPath: path.resolve(process.cwd(), process.env.WHISPER_VAD_MODEL || 'models/ggml-silero-v5.1.2.bin'),
   deleteClipsAfterPost: process.env.DELETE_CLIPS_AFTER_POST !== 'false',
   deleteUnpostedClipsAfterHours: Math.max(0, Number(process.env.DELETE_UNPOSTED_CLIPS_AFTER_HOURS || 0)),
+  tiktokMode: process.env.TIKTOK_MODE === 'manual' ? 'manual' : 'auto',
+  tiktokManualDir: process.env.TIKTOK_MANUAL_DIR || '',
+  tiktokManualKeepDays: Math.max(1, Number(process.env.TIKTOK_MANUAL_KEEP_DAYS || 3)),
   focusChannels: [],
   onlyFocusChannels: false,
   contentFocus: null,
