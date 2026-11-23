@@ -191,5 +191,23 @@ check('subtitles: profanity masked with one asterisk', () => {
   check('buffer: recent snapshot of a stopped channel kept for its queued job', () => assert.ok(!del.includes('snapshot_1.mp4')));
 }
 
+{
+  const { carryForward } = await import('./metrics/collect-metrics.js');
+  const base = { platform: 'youtube' as const, channel: 'x', postedAt: '', ageHours: 5, title: 't', caption: 'c' };
+  const prev = [{ ...base, clip: 'a.mp4', views: 900, status: 'public' }, { ...base, clip: 'b.mp4', views: 50, status: 'public' }];
+  const fresh = [{ ...base, clip: 'a.mp4', views: undefined, status: 'fetch failed' }, { ...base, clip: 'b.mp4', views: 70, status: 'public' }, { ...base, clip: 'c.mp4', views: undefined }];
+  const r = carryForward(fresh as any, prev as any, '2026-11-22T06:00:00Z');
+  check('metrics: an unread video keeps its last known views', () => {
+    assert.equal(r[0].views, 900);
+    assert.equal(r[0].status, 'public');
+    assert.equal(r[0].carriedFrom, '2026-11-22T06:00:00Z');
+  });
+  check('metrics: fresh numbers win; new videos stay unread', () => {
+    assert.equal(r[1].views, 70);
+    assert.equal(r[1].carriedFrom, undefined);
+    assert.equal(r[2].views, undefined);
+  });
+}
+
 console.log(failures ? `\n${failures} check(s) failed` : '\nall SEO checks passed');
 process.exit(failures ? 1 : 0);

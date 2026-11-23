@@ -40,7 +40,25 @@ export interface VideoMetric {
   comments?: number;
   status?: string; // public / unavailable / restricted / under review...
   studioNote?: string;
+  /** When views/status come from an earlier run because this run could not read them */
+  carriedFrom?: string;
 }
+
+/**
+ * A failed read (Mac asleep, network change, Studio not loading) must not wipe what we knew:
+ * the moment picker learns from these numbers. Unread fields keep the previous run's values.
+ */
+export const carryForward = (fresh: VideoMetric[], previous: VideoMetric[], previousAt: string): VideoMetric[] => {
+  const key = (v: VideoMetric) => `${v.platform}:${v.clip}`;
+  const prev = new Map(previous.map((v) => [key(v), v]));
+  return fresh.map((v) => {
+    const old = prev.get(key(v));
+    const unread = v.views === undefined || v.views === null;
+    if (!old || !unread || old.views === undefined || old.views === null) return v;
+    const status = !v.status || /not found|not read|fetch failed|unknown/i.test(v.status) ? old.status : v.status;
+    return { ...v, views: old.views, likes: v.likes ?? old.likes, comments: v.comments ?? old.comments, status, carriedFrom: old.carriedFrom ?? previousAt };
+  });
+};
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const num = (s?: string) => {
@@ -71,6 +89,7 @@ const youtubeStudioRows = async (page: Page): Promise<string[]> => {
   await page.waitForTimeout(6000);
   if (/accounts\.google\.com|ServiceLogin/i.test(page.url())) throw new Error('YouTube cookies expired');
   const channelUrl = page.url().match(/studio\.youtube\.com\/channel\/[\w-]+/)?.[0];
+  if (!channelUrl) throw new Error(`Studio did not open the channel page (offline or still loading: ${page.url().slice(0, 80)})`);
   await page.goto(`https://${channelUrl}/videos/short`, { waitUntil: 'domcontentloaded', timeout: 90_000 });
   await page.waitForTimeout(9000);
   return page.locator('ytcp-video-row').allInnerTexts();
@@ -195,7 +214,11 @@ export const collectMetrics = async (): Promise<VideoMetric[]> => {
     out.push(m);
   }
 
-  await fs.writeFile(path.resolve('data/video-metrics.json'), JSON.stringify({ collectedAt: new Date().toISOString(), videos: out }, null, 2) + '\n');
+  const metricsFile = path.resolve('data/video-metrics.json');
+  const before = JSON.parse(await fs.readFile(metricsFile, 'utf-8').catch(() => '{"videos":[]}')) as { collectedAt?: string; videos: VideoMetric[] };
+  const merged = carryForward(out, before.videos ?? [], before.collectedAt ?? '');
+  await fs.writeFile(metricsFile, JSON.stringify({ collectedAt: new Date().toISOString(), videos: merged }, null, 2) + '\n');
+  out.splice(0, out.length, ...merged);
   return out;
 };
 
