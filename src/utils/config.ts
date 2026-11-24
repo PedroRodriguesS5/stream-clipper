@@ -101,6 +101,10 @@ export interface AppConfig {
   tiktokManualDir: string;
   /** Manual exports older than this many days are removed */
   tiktokManualKeepDays: number;
+  /** Follow-CTA A/B test variants (none,end,pulse); clips rotate between them */
+  ctaVariants: string[];
+  /** Text of the follow CTA pill */
+  ctaText: string;
   bufferDir: string;
   outputDir: string;
 }
@@ -196,6 +200,8 @@ export const config: AppConfig = {
   tiktokMode: process.env.TIKTOK_MODE === 'manual' ? 'manual' : 'auto',
   tiktokManualDir: process.env.TIKTOK_MANUAL_DIR || '',
   tiktokManualKeepDays: Math.max(1, Number(process.env.TIKTOK_MANUAL_KEEP_DAYS || 3)),
+  ctaVariants: (process.env.CTA_VARIANTS || 'none,end,pulse').split(',').map((v) => v.trim()).filter(Boolean),
+  ctaText: process.env.CTA_TEXT || 'Siga para mais',
   focusChannels: [],
   onlyFocusChannels: false,
   contentFocus: null,

@@ -3,6 +3,7 @@ import path from 'path';
 import { DiscoveredGtaStream, TimedChatMessage } from './ingestion/ingestion.js';
 import { extractClipWithClaudeAgent, factCheckSEO, generateSEO } from './ai/ai.js';
 import { gameKeyword } from './ai/game-profile.js';
+import { chooseCtaVariant } from './video/cta.js';
 import { computeMomentSignals, extractMomentFrames, removeFiles } from './ai/moment-signals.js';
 import { pastPerformanceSummary } from './metrics/performance.js';
 import { createInfiniteLoopClip, getVideoDurationSeconds } from './video/video.js';
@@ -186,10 +187,11 @@ export const processClip = async (job: ClipJobInput): Promise<ClipJobResult> => 
     });
     const clip = await createInfiniteLoopClip(snapshotPath, finalClipPath, decision, seo.hook_caption, undefined, {
       badge: gameKeyword(game),
+      cta: chooseCtaVariant(path.basename(finalClipPath)),
     });
     await fs.writeFile(
       finalClipPath.replace(/\.mp4$/, '.seo.json'),
-      JSON.stringify({ ...seo, moment: decision, factCheck: problems.length ? { before: draftSeo, problems } : 'ok' }, null, 2)
+      JSON.stringify({ ...seo, cta: clip.cta ?? 'none', moment: decision, factCheck: problems.length ? { before: draftSeo, problems } : 'ok' }, null, 2)
     );
 
     log('INFO', tag, '4/5 Monetization gate...');

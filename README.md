@@ -130,7 +130,8 @@ More detail, the full pipeline and troubleshooting are in [`PROJECT_GUIDE.md`](P
 | `npm run setup` | Only choose what to clip (saved for the next start) |
 | `npm test` | Offline tests: SEO rules, platform formatters, subtitle logic, post queue, daily plan |
 | `npm run typecheck` | TypeScript check |
-| `npm run metrics` | Collect views/likes from YouTube Studio and TikTok Studio |
+| `npm run metrics` | Collect views/likes (and subscribers per Short) from YouTube Studio and TikTok Studio |
+| `npm run cta:report` | Compare the follow-CTA variants: subscribers per 1,000 views |
 | `npm run youtube:login` | Log in to YouTube Studio once (persistent session) |
 | `npm run test:publish -- output/<clip>.mp4 [--youtube-only\|--tiktok-only\|--instagram-only]` | Post one rendered clip now |
 | `npm run cleanup:clips [-- --dry-run]` | Delete rendered clips that are already posted (also runs automatically) |

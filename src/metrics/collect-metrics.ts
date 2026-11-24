@@ -40,6 +40,10 @@ export interface VideoMetric {
   comments?: number;
   status?: string; // public / unavailable / restricted / under review...
   studioNote?: string;
+  /** Subscribers gained from this video (YouTube Studio analytics) */
+  subscribers?: number;
+  /** Follow-CTA variant burned into the clip (A/B test) */
+  cta?: string;
   /** When views/status come from an earlier run because this run could not read them */
   carriedFrom?: string;
 }
@@ -54,9 +58,10 @@ export const carryForward = (fresh: VideoMetric[], previous: VideoMetric[], prev
   return fresh.map((v) => {
     const old = prev.get(key(v));
     const unread = v.views === undefined || v.views === null;
+    if (old && v.subscribers === undefined && old.subscribers !== undefined) v = { ...v, subscribers: old.subscribers };
     if (!old || !unread || old.views === undefined || old.views === null) return v;
     const status = !v.status || /not found|not read|fetch failed|unknown/i.test(v.status) ? old.status : v.status;
-    return { ...v, views: old.views, likes: v.likes ?? old.likes, comments: v.comments ?? old.comments, status, carriedFrom: old.carriedFrom ?? previousAt };
+    return { ...v, views: old.views, likes: v.likes ?? old.likes, comments: v.comments ?? old.comments, subscribers: v.subscribers ?? old.subscribers, status, carriedFrom: old.carriedFrom ?? previousAt };
   });
 };
 
@@ -68,6 +73,21 @@ const num = (s?: string) => {
   if (!m) return Number(t.replace(/\D/g, '')) || 0;
   const mult = /k|mil/i.test(m[2] || '') ? 1e3 : /m/i.test(m[2] || '') ? 1e6 : 1;
   return Math.round(parseFloat(m[1]) * mult);
+};
+
+/** "Inscritos | +3" / "Subscribers | +3" on a video's Studio analytics page -> 3 */
+export const parseStudioSubscribers = (text: string): number | undefined => {
+  const m = text.match(/(?:Inscritos|Subscribers)\s*\|?\s*\n?\s*([+−-]?\s*[\d.,]+)/);
+  if (!m) return undefined;
+  const n = Number(m[1].replace(/\s/g, '').replace('−', '-').replace(/[.,](?=\d{3}\b)/g, ''));
+  return Number.isFinite(n) ? n : undefined;
+};
+
+/** Subscribers gained per video from Studio analytics (needs the youtube.com session) */
+const studioSubscribers = async (page: Page, id: string): Promise<number | undefined> => {
+  await page.goto(`https://studio.youtube.com/video/${id}/analytics/tab-overview/period-default`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  await page.waitForTimeout(9000);
+  return parseStudioSubscribers((await page.evaluate(() => document.body.innerText)).replace(/\n+/g, ' | '));
 };
 
 const youtubePublic = async (id: string) => {
@@ -160,12 +180,24 @@ export const collectMetrics = async (): Promise<VideoMetric[]> => {
 
   const browser = await chromium.launch({ headless: true, args: ['--disable-blink-features=AutomationControlled'] });
   let ytRows: string[] = [];
+  const subsById = new Map<string, number>();
   let ttText = '';
   try {
     const yt = await browser.newContext({ userAgent: UA, viewport: { width: 1440, height: 950 } });
     const raw = JSON.parse(await fs.readFile(config.youtubeCookiesPath, 'utf-8')) as RawBrowserCookie[];
     await yt.addCookies(normalizePlaywrightCookies(raw));
     ytRows = await youtubeStudioRows(await yt.newPage()).catch((e) => (log('WARN', 'Metrics', `YouTube Studio: ${e.message}`), []));
+    // Subscribers per video (for the follow-CTA test): videos at least 24 h old, up to 12 per run
+    const ytPage = await yt.newPage();
+    const ids = [...posted, ...extra]
+      .filter((i) => i.platform === 'youtube' && Date.now() - new Date(i.updatedAt).getTime() > 24 * 3600_000)
+      .map((i) => i.result?.match(/shorts\/([\w-]{11})/)?.[1])
+      .filter((id): id is string => !!id)
+      .slice(-12);
+    for (const id of ids) {
+      const subs = await studioSubscribers(ytPage, id).catch(() => undefined);
+      if (subs !== undefined) subsById.set(id, subs);
+    }
 
     const tt = await browser.newContext({ userAgent: UA, viewport: { width: 1440, height: 950 } });
     await tt.addCookies(await loadTikTokCookies());
@@ -188,6 +220,7 @@ export const collectMetrics = async (): Promise<VideoMetric[]> => {
       ageHours: +((Date.now() - new Date(item.updatedAt).getTime()) / 3600_000).toFixed(1),
       title: item.seo.title,
       caption: item.seo.hook_caption,
+      cta: seo.cta,
       moment: seo.moment && {
         what_happened: seo.moment.what_happened,
         streamer_reaction: seo.moment.streamer_reaction,
@@ -199,6 +232,7 @@ export const collectMetrics = async (): Promise<VideoMetric[]> => {
       const id = item.result?.match(/shorts\/([\w-]{11})/)?.[1];
       if (id) {
         m.url = `https://youtube.com/shorts/${id}`;
+        if (subsById.has(id)) m.subscribers = subsById.get(id);
         Object.assign(m, await youtubePublic(id).catch(() => ({ status: 'fetch failed' })));
       }
       const row = ytRows.find((r) => r.includes(titleKey));

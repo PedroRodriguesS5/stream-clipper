@@ -6,6 +6,7 @@ import fs from 'fs/promises';
 import { planLayout, buildLayoutFilter, captionOverlayY, LayoutPlan } from './layout.js';
 import { renderCaptionPng } from './caption.js';
 import { buildSubtitleTrack, removeSubtitleTrack, SUB_Y, SubtitleTrack } from './subtitles.js';
+import { CtaVariant, ctaOverlays, renderCtaPngs } from './cta.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -58,7 +59,7 @@ export const createInfiniteLoopClip = async (
   decision: ExtractClipDecision,
   subtitleText?: string,
   layoutPlan?: LayoutPlan,
-  options: { badge?: string } = {}
+  options: { badge?: string; cta?: CtaVariant } = {}
 ): Promise<ClipRenderResult> => {
   const { clip_start, clip_end, hook_split_point } = decision;
 
@@ -109,6 +110,19 @@ export const createInfiniteLoopClip = async (
     overlays.push(`[${last}][${subIn}:v]overlay=x=(W-w)/2-30:y=${SUB_Y}:eof_action=pass[v_sub]`);
     last = 'v_sub';
   }
+  // Follow CTA (A/B test): PNG pill(s) overlaid last, never blocks the render
+  const cta = options.cta ?? 'none';
+  let ctaFiles: string[] = [];
+  try {
+    ctaFiles = await renderCtaPngs(cta, outputPath.replace(/\.mp4$/, ''));
+  } catch (err) {
+    log('WARN', 'VideoEngine', `CTA render failed (${(err as Error).message}); continuing without it.`);
+  }
+  const firstCtaIn = 1 + (captionPath ? 1 : 0) + (subs ? 1 : 0);
+  const ctaPart = ctaOverlays(ctaFiles.length ? cta : 'none', ctaFiles.map((_, i) => firstCtaIn + i), last, clip_end - clip_start);
+  overlays.push(...ctaPart.filters);
+  last = ctaPart.out;
+
   const filterComplex = [
     `[0:v]trim=start=${clip_start}:end=${clip_end},setpts=PTS-STARTPTS[v_cat]`,
     `[0:a]atrim=start=${clip_start}:end=${clip_end},asetpts=PTS-STARTPTS[a_out]`,
@@ -123,6 +137,7 @@ export const createInfiniteLoopClip = async (
     inputPath,
     ...(captionPath ? ['-loop', '1', '-i', captionPath] : []),
     ...(subs ? ['-f', 'concat', '-safe', '0', '-i', subs.concatPath] : []),
+    ...ctaFiles.flatMap((f) => ['-loop', '1', '-i', f]),
     '-filter_complex',
     filterComplex,
     '-map',
@@ -149,6 +164,7 @@ export const createInfiniteLoopClip = async (
   } finally {
     if (captionPath) await fs.unlink(captionPath).catch(() => {});
     await removeSubtitleTrack(subs);
+    await Promise.all(ctaFiles.map((f) => fs.unlink(f).catch(() => {})));
   }
   log('SUCCESS', 'VideoEngine', `Rendered 9:16 infinite loop video -> ${outputPath}`);
   return {
@@ -156,6 +172,7 @@ export const createInfiniteLoopClip = async (
     layout: plan,
     hasCaption: !!captionPath,
     hasSubtitles: !!subs,
+    cta: ctaFiles.length ? cta : 'none',
     durationSeconds: Number((clip_end - clip_start).toFixed(2)),
   };
 };
@@ -166,6 +183,8 @@ export interface ClipRenderResult {
   hasCaption: boolean;
   /** Whisper speech subtitles burned in (an .srt is saved next to the clip) */
   hasSubtitles?: boolean;
+  /** Follow-CTA variant actually burned in (A/B test) */
+  cta?: CtaVariant;
   durationSeconds: number;
 }
 
