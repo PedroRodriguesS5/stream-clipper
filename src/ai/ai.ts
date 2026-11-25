@@ -129,6 +129,7 @@ export const extractClipWithClaudeAgent = async (context: {
           `- Funny fails: physics/ragdoll, car flipping, NPC doing something absurd, a stupid death ("WASTED"/"BUSTED"), a plan going wrong.`,
           `- Skill: impossible driving, a perfect shot, escaping with 1 HP.`,
           `- EASTER EGGS & HIDDEN DETAILS (TOP PRIORITY, the most searched and watched GTA 6 Shorts in Brazil: "gta 6 easter egg" Shorts get ~24k views typically and up to 400k+): the streamer finding a real secret: a hidden reference or message, a nod to older GTA games or other media, a secret place or item, a strange NPC/world behavior few people know, an absurdly detailed mechanic shown for the first time. When the frames clearly show one and the streamer reacts, give virality_score 9-10 and say "easter egg"/"detalhe escondido" in what_happened. Ordinary features (petting a dog, renting a scooter) are discoveries, not easter eggs: don't call them that.`,
+          `- MYSTERIES & INVESTIGATIONS (TOP PRIORITY, as viral as easter eggs; CELLBIT is famous for this): the streamer investigating something strange or unexplained in the game: a creepy place, a cryptic message or symbol, a disappearing/ghost-like NPC, a weird sound, an abandoned building, a puzzle, a lore or conspiracy theory being tested, "o que é isso?", following clues. The mystery must be visible on screen and the streamer must be clearly intrigued, scared or excited. When the frames show it, give virality_score 9-10 and say "mistério"/"investigando" in what_happened. Pick the moment where the mystery is revealed or the tension peaks; if the answer comes later, start right before the reveal. Ordinary exploration with no strange element is NOT a mystery.`,
           `- Discovery & World Details (HIGH PRIORITY): the streamer discovering or reacting to CAR MECHANICS (engine damage/smoke, tuning, towing, rust/paint, crash physics, turn signals, interior details), BOATS / WATERCRAFT (speedboats, boat fishing, seaplanes on water, swamp navigation), ANIMALS & WILDLIFE (alligators/jacarés, snakes, pelicans, chickens, dogs, sharks, fish, animals decomposing or attacking), or realistic NPC/world mechanics. Give clear car mechanic, boat, or animal reaction moments a virality_score of 8-9+.`,
           `- Great scenes: a breathtaking view or cinematic moment of the game (sunset/storm over Vice City, a huge set piece, an amazing detail) - especially when the streamer is in awe ("que lindo", silence, jaw drop).`,
           `- Surprise and strong feelings, not only comedy: the streamer genuinely shocked ("o quê?!"), scared by a jump scare, moved by a story beat, hyped, or angry. Any real, visible feeling about what happens on screen can be a clip.`,
@@ -369,6 +370,7 @@ const buildSeoRules = (game: string): string => {
     `  * Only claims supported by the FACTS (no fake "cancelado", "banido", "treta" unless it really happened).`,
     `  * ACCURACY OVER HYPE: use the EXACT action from the FACTS, never a stronger one. "rodou/derrapou" is NOT "capotou"; "bateu" is NOT "explodiu"; "levou um tiro" is NOT "morreu"; "fugiu" is NOT "escapou de 5 estrelas". Curiosity comes from the angle and wording, never from exaggerating what happened. A viewer who watches must see exactly what the title and caption promise.`,
     `  * EASTER EGGS: when the FACTS say the streamer found an easter egg, secret or hidden detail, put "EASTER EGG" (or "SEGREDO" / "DETALHE ESCONDIDO") in the title next to "${keyword}": it is what people search ("ALANZOKA ACHOU UM EASTER EGG SINISTRO NO ${keyword} 😱" had 293k views). Never use these words when the FACTS don't show a real secret.`,
+    `  * MYSTERIES: when the FACTS show the streamer investigating something strange or unexplained, use "MISTÉRIO" / "SINISTRO" / "INVESTIGOU" / "DESVENDOU" with "${keyword}" (e.g. "CELLBIT INVESTIGOU O MISTÉRIO MAIS SINISTRO DO ${keyword} 😱"). The hook caption can tease without the answer ("O QUE TEM NESSE LUGAR DO ${keyword}?"). Never promise a mystery the FACTS don't show, and never claim it was solved unless it was.`,
     `  * The structures above are patterns, not text to copy: never reuse an example's wording (e.g. "É FILME OU JOGO") unless the FACTS say exactly that.`,
     `HOOK CAPTION (on-screen text, max 45 chars, UPPERCASE): stays on screen in the first seconds. TikTok and Instagram read on-screen text (OCR) for search, so include "${keyword}" or the concrete thing on screen (CARRO, BARCO, POLÍCIA, the weapon/agent/map). Good: "A FÍSICA DESSE CARRO NO ${keyword} 💀", "FUGIU DA POLÍCIA DE LANCHA NO ${keyword} 🚤". Bad: generic phrases with no keyword ("OLHA ISSO", "VOCÊ NÃO VAI ACREDITAR", "NINGUÉM ESPERAVA").`,
     `DESCRIPTION (used as YouTube description, TikTok caption and Instagram caption; search engines read it as text):`,
@@ -583,6 +585,12 @@ const MICRO_TOPICS: { re: RegExp; tags: string[]; searches: string[] }[] = [
     re: /(easter ?egg|segredo|secreto|escondid|refer[êe]ncia)/i,
     tags: ['eastereggs', 'segredos'],
     searches: ['easter egg', 'segredos', 'detalhes escondidos'],
+  },
+  {
+    // Mysteries and investigations (cellbit-style): as viral as easter eggs
+    re: /(mist[ée]ri|investig|sinistr|assombrad|paranormal|fantasma|enigma|pista|teoria|desvend|bizarr|estranh)/i,
+    tags: ['misterios', 'teorias'],
+    searches: ['misterios', 'misterio sinistro', 'teorias'],
   },
   {
     re: /\b(npc|realismo|realista|detalhe|interação)\w*/i,

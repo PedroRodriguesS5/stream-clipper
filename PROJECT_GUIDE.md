@@ -34,6 +34,9 @@ npm run youtube:login                                  # log in to the channel o
 ### TikTok from the phone (semi-manual)
 If automated TikTok uploads get no reach, set `TIKTOK_MODE=manual`. The queue still picks the best clip for each TikTok slot (3 a day), but instead of uploading it copies `YYYY-MM-DD_HHMM_<streamer>.mp4` and a `.txt` with the ready caption to **iCloud Drive → Stream Clipper → TikTok** and shows a Mac notification. On the iPhone: Files app → that folder → open the video → Share → TikTok → paste the caption. Exports older than 3 days are removed (`TIKTOK_MANUAL_KEEP_DAYS`).
 
+### Mysteries and easter eggs
+The moment picker treats two kinds of GTA 6 moments as top priority: **easter eggs** (a real hidden secret) and **mysteries** (the streamer investigating something strange: a creepy place, a cryptic symbol, a ghost-like NPC, a theory being tested; cellbit's specialty). These get a 9-10 score when the frames show them, titles use "EASTER EGG" / "MISTÉRIO" only when it really happened, and the clips get searched tags like `#gta6misterios`. To always watch a streamer known for this, add them to `FOCUS_CHANNELS` (e.g. `FOCUS_CHANNELS=cellbit`): priority channels are watched whenever live and their clips rank +2 in the queue.
+
 ### Follow CTA test (more subscribers)
 Each clip gets one of three variants (`CTA_VARIANTS`): **none** (control), **end** (a small "＋ Siga para mais" pill for the last 3 s) or **pulse** (the same pill from second 2, gently pulsing). It sits under the subtitles, clear of the platform buttons. The variant is saved in the clip's `.seo.json`. `npm run metrics` reads each Short's **subscribers gained** from YouTube Studio analytics (once it is 24 h old), and `npm run cta:report` ranks the variants by subscribers per 1,000 views. Wait for at least 10 measured Shorts per variant, then keep the winner (e.g. `CTA_VARIANTS=end`).
 

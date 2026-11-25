@@ -107,6 +107,17 @@ check('no easter egg tags on an ordinary clip', () => {
   assert.ok(!gta6.hashtags.some((t) => t.includes('easter')) && !gta6.search_tags?.some((t) => t.includes('easter')));
 });
 
+// Mysteries (cellbit-style investigations) get their own searched tags
+const mystery = normalizeSEO({ title: 'CELLBIT INVESTIGOU O MISTÉRIO MAIS SINISTRO DO GTA 6 😱', description: 'No GTA 6, @cellbit investigou uma casa abandonada com um símbolo estranho na parede.', hashtags: [] }, 'cellbit', 'Grand Theft Auto VI');
+check('mystery: #gta6misterios first and "gta 6 misterios" in search tags', () => {
+  assert.equal(mystery.hashtags[0], '#gta6misterios', mystery.hashtags.join(' '));
+  assert.ok(mystery.search_tags?.includes('gta 6 misterios'), JSON.stringify(mystery.search_tags));
+  assert.ok(mystery.hashtags.slice(0, 3).includes('#cellbit'));
+});
+check('no mystery tags on an ordinary clip', () => {
+  assert.ok(!gta6.hashtags.some((t) => t.includes('misterio')));
+});
+
 // Another game: nothing GTA at all
 const valorant = normalizeSEO({ title: 'XAROLA DEU ACE NO VALORANT 😱', description: 'xarola deu ace.', hashtags: ['#gta6'] }, 'xarola', 'VALORANT');
 check('VALORANT: no GTA tags, game tag present', () => {

@@ -67,7 +67,8 @@ export const applySession = (s: ClipSession) => {
   config.targetCategory = s.categories[0] || config.targetCategories[0];
   if (s.language) config.streamLanguage = s.language.toUpperCase();
   if (typeof s.minViewers === 'number' && s.minViewers >= 0) config.minViewers = s.minViewers;
-  config.focusChannels = s.channels.map((c) => c.toLowerCase());
+  // Session channels plus the always-on FOCUS_CHANNELS from .env
+  config.focusChannels = [...new Set([...s.channels.map((c) => c.toLowerCase()), ...config.focusChannels])];
   config.onlyFocusChannels = s.onlyChannels && s.channels.length > 0;
   const types = s.contentTypes.filter((t) => (MOMENT_TYPES as readonly string[]).includes(t) && t !== 'nothing' && t !== 'waiting_or_menu');
   config.contentFocus = types.length || s.request ? { request: s.request, types } : null;
