@@ -202,7 +202,7 @@ export const config: AppConfig = {
   tiktokManualKeepDays: Math.max(1, Number(process.env.TIKTOK_MANUAL_KEEP_DAYS || 3)),
   ctaVariants: (process.env.CTA_VARIANTS || 'none,end,pulse').split(',').map((v) => v.trim()).filter(Boolean),
   ctaText: process.env.CTA_TEXT || 'Siga para mais',
-  focusChannels: [],
+  focusChannels: (process.env.FOCUS_CHANNELS || '').split(',').map((c) => c.trim().toLowerCase()).filter(Boolean),
   onlyFocusChannels: false,
   contentFocus: null,
   // BUFFER_DIR / OUTPUT_DIR let tests use temp folders (the post queue's cleanup deletes files there)
